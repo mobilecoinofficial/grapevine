@@ -1,0 +1,35 @@
+[package]
+name = "mc-bomb-enclave-impl"
+version = "4.0.2"
+authors = ["MobileCoin"]
+edition = "2021"
+license = "GPL-3.0"
+rust-version = { workspace = true }
+
+[dependencies]
+# mobilecoin
+mc-attest-core = { path = "../../mobilecoin/attest/core", default-features = false }
+mc-attest-enclave-api = { path = "../../mobilecoin/attest/enclave-api", default-features = false }
+mc-common = { path = "../../mobilecoin/common" }
+mc-crypto-ake-enclave = { path = "../../mobilecoin/crypto/ake/enclave" }
+mc-crypto-keys = { path = "../../mobilecoin/crypto/keys", default-features = false }
+mc-crypto-rand = { path = "../../mobilecoin/crypto/rand", default-features = false }
+mc-sgx-compat = { path = "../../mobilecoin/sgx/compat", default-features = false }
+mc-sgx-report-cache-api = { path = "../../mobilecoin/sgx/report-cache/api" }
+mc-util-serial = { path = "../../mobilecoin/util/serial", default-features = false }
+
+# mc-oblivious
+aligned-cmov = { git = "https://github.com/mobilecoinfoundation/mc-oblivious", rev = "d80f47da277e61cb3daf034098630a23ee41ba12" }
+generic-array = { version = "0.14", default-features = false }
+mc-oblivious-map = { git = "https://github.com/mobilecoinfoundation/mc-oblivious", rev = "d80f47da277e61cb3daf034098630a23ee41ba12" }
+mc-oblivious-ram = { git = "https://github.com/mobilecoinfoundation/mc-oblivious", rev = "d80f47da277e61cb3daf034098630a23ee41ba12" }
+mc-oblivious-traits = { git = "https://github.com/mobilecoinfoundation/mc-oblivious", rev = "d80f47da277e61cb3daf034098630a23ee41ba12" }
+
+# bomb
+mc-bomb-enclave-api = { path = "../api" }
+mc-bomb-types = { path = "../../types" }
+
+rand_chacha = { version = "0.3", default-features = false }
+
+[dev-dependencies]
+mc-common = { path = "../../mobilecoin/common", features = ["loggers"] }
