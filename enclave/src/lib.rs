@@ -111,7 +111,7 @@ impl SgxBombEnclave {
     fn enclave_call(&self, inbuf: &[u8]) -> StdResult<Vec<u8>, SgxError> {
         Ok(make_variable_length_ecall(
             self.eid(),
-            ecall::viewenclave_call,
+            ecall::bombenclave_call,
             inbuf,
         )?)
     }

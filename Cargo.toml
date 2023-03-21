@@ -2,12 +2,15 @@ cargo-features = ["named-profiles"]
 
 [workspace]
 members = [
+    "api",
     "enclave",
     "enclave/api",
     "enclave/edl",
     "enclave/impl",
     "enclave/measurement",
+    "server",
     "types",
+    "uri",
 ]
 exclude = [
     "enclave/trusted",
