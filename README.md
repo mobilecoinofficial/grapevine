@@ -6,7 +6,7 @@ a recipient, and searching for messages, using a CRUD API.
 
 Let's suppose you have the following situation.
 
-* You have a mobile app, and you want Alice's client wants to pass a message to Bob's client.
+* You have a mobile app, and Alice's client wants to pass a message to Bob's client.
 * Following with standard practices, Alice does not make a direct p2p connection
   to Bob, for a lot of reasons. Instead, Alice writes her message to a backend service
   (which is sometimes called a "message broker")
