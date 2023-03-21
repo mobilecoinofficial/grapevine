@@ -1,0 +1,27 @@
+[package]
+name = "mc-bomb-api"
+version = "4.1.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+license = "Apache-2.0"
+readme = "README.md"
+rust-version = { workspace = true }
+
+[dependencies]
+displaydoc = { version = "0.2", default-features = false }
+futures = "0.3"
+grpcio = "0.12.1"
+prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
+protobuf = "2.27.1"
+
+mc-attest-api = { path = "../mobilecoin/attest/api" }
+mc-bomb-types = { path = "../types" }
+
+[dev-dependencies]
+mc-util-test-helper = { path = "../mobilecoin/util/test-helper" }
+
+[build-dependencies]
+mc-util-build-grpc = { path = "../mobilecoin/util/build/grpc" }
+mc-util-build-script = { path = "../mobilecoin/util/build/script" }
+
+cargo-emit = "0.2.1"
