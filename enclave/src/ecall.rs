@@ -4,7 +4,7 @@
 use mc_sgx_types::{sgx_enclave_id_t, sgx_status_t};
 
 extern "C" {
-    pub fn viewenclave_call(
+    pub fn bombenclave_call(
         eid: sgx_enclave_id_t,
         retval: *mut sgx_status_t,
         inbuf: *const u8,
