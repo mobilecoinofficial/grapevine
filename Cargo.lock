@@ -2146,6 +2146,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-bomb-client"
+version = "4.1.0-pre0"
+dependencies = [
+ "chrono",
+ "clap 4.1.10",
+ "grpcio",
+ "hex",
+ "mc-attest-verifier",
+ "mc-bomb-connection",
+ "mc-bomb-enclave-measurement",
+ "mc-bomb-types",
+ "mc-bomb-uri",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-crypto-rand",
+ "mc-util-cli",
+ "mc-util-from-random",
+ "mc-util-grpc",
+ "mc-util-parse",
+ "mc-util-serial",
+ "serde_json",
+]
+
+[[package]]
 name = "mc-bomb-connection"
 version = "4.1.0-pre0"
 dependencies = [

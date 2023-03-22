@@ -1,0 +1,37 @@
+[package]
+name = "mc-bomb-client"
+version = "4.1.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
+
+[[bin]]
+name = "mc-bomb-client"
+path = "src/main.rs"
+
+[dependencies]
+# mobilecoin
+mc-attest-verifier = { path = "../mobilecoin/attest/verifier" }
+mc-common = { path = "../mobilecoin/common", features = ["log"] }
+mc-crypto-keys = { path = "../mobilecoin/crypto/keys" }
+mc-crypto-rand = { path = "../mobilecoin/crypto/rand" }
+mc-util-cli = { path = "../mobilecoin/util/cli" }
+mc-util-from-random = { path = "../mobilecoin/util/from-random" }
+mc-util-grpc = { path = "../mobilecoin/util/grpc" }
+mc-util-parse = { path = "../mobilecoin/util/parse" }
+mc-util-serial = { path = "../mobilecoin/util/serial" }
+
+# bomb
+mc-bomb-connection = { path = "../connection" }
+mc-bomb-enclave-measurement = { path = "../enclave/measurement" }
+mc-bomb-types = { path = "../types" }
+mc-bomb-uri = { path = "../uri" }
+
+# third-party
+chrono = "*"
+clap = "4.1"
+grpcio = "0.12.1"
+hex = "0.4"
+serde_json = "1"
