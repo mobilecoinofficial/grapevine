@@ -13,6 +13,18 @@ use alloc::vec::Vec;
 use prost::Message;
 //use serde::{Deserialize, Serialize};
 
+/// The signing context string used for signing and verifying challenges
+pub const MC_BOMB_CHALLENGE_SIGNING_CONTEXT: &[u8; 17] = b"mc-bomb-challenge";
+
+/// The RequestType enum value for CREATE request
+pub const REQUEST_TYPE_CREATE: u32 = 1;
+/// The RequestType enum value for READ request
+pub const REQUEST_TYPE_READ: u32 = 2;
+/// The RequestType enum value for UPDATE request
+pub const REQUEST_TYPE_UPDATE: u32 = 3;
+/// The RequestType enum value for DELETE request
+pub const REQUEST_TYPE_DELETE: u32 = 4;
+
 /// The QueryResponse structure, returned by the enclave in response to an
 /// attested request
 #[derive(Clone, Eq, PartialEq, Message)]

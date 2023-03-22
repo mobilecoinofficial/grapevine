@@ -15,8 +15,9 @@ use alloc::boxed::Box;
 use generic_array::sequence::Split;
 use mc_bomb_enclave_api::QueryError;
 use mc_bomb_types::{
-    QueryRequest, QueryResponse, STATUS_CODE_INTERNAL_ERROR, STATUS_CODE_INVALID_RECIPIENT,
-    STATUS_CODE_SUCCESS,
+    QueryRequest, QueryResponse, MC_BOMB_CHALLENGE_SIGNING_CONTEXT, REQUEST_TYPE_CREATE,
+    REQUEST_TYPE_DELETE, REQUEST_TYPE_UPDATE, STATUS_CODE_INTERNAL_ERROR,
+    STATUS_CODE_INVALID_RECIPIENT, STATUS_CODE_SUCCESS,
 };
 use mc_crypto_keys::{RistrettoPublic, RistrettoSignature};
 use mc_crypto_rand::McRng;
@@ -159,7 +160,11 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> MessageBus<OSC> 
         // challenge value.
         let decompressed_identity = RistrettoPublic::try_from(&query.auth_identity[..])?;
         let sig = RistrettoSignature::try_from(&query.auth_signature[..])?;
-        decompressed_identity.verify_schnorrkel(b"mc-bomb-challenge", challenge_value, &sig)?;
+        decompressed_identity.verify_schnorrkel(
+            MC_BOMB_CHALLENGE_SIGNING_CONTEXT,
+            challenge_value,
+            &sig,
+        )?;
 
         // In the specific case that the caller did not set request type to a nonzero
         // value, fail hard and fast, because this breaks security.
@@ -170,7 +175,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> MessageBus<OSC> 
 
         // Call the appropriate helper
         match query.request_type {
-            1 => Ok(self.create_record(query)?),
+            REQUEST_TYPE_CREATE => Ok(self.create_record(query)?),
             _ => Ok(self.access_record(query)?),
         }
     }
@@ -316,8 +321,8 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> MessageBus<OSC> 
     //   constant-time. The user can reliably avoid it by not using update with the
     //   all-zeroes message id.
     fn access_record(&mut self, query: &QueryRequest) -> Result<QueryResponse, QueryError> {
-        let is_update_request = query.request_type.ct_eq(&3);
-        let is_delete_request = query.request_type.ct_eq(&4);
+        let is_update_request = query.request_type.ct_eq(&REQUEST_TYPE_UPDATE);
+        let is_delete_request = query.request_type.ct_eq(&REQUEST_TYPE_DELETE);
 
         // Make the identity bytes aligned for faster testing later.
         let identity: A8Bytes<U32> = Aligned(
