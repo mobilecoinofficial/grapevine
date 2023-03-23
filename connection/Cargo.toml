@@ -1,0 +1,42 @@
+[package]
+name = "mc-bomb-connection"
+version = "4.1.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
+
+[lib]
+name = "mc_bomb_connection"
+path = "src/lib.rs"
+
+[dependencies]
+# mobilecoin
+mc-attest-ake = { path = "../mobilecoin/attest/ake" }
+mc-attest-core = { path = "../mobilecoin/attest/core" }
+mc-attest-verifier = { path = "../mobilecoin/attest/verifier" }
+mc-common = { path = "../mobilecoin/common", features = ["log"] }
+mc-connection = { path = "../mobilecoin/connection" }
+mc-crypto-keys = { path = "../mobilecoin/crypto/keys" }
+mc-crypto-noise = { path = "../mobilecoin/crypto/noise" }
+mc-crypto-rand = { path = "../mobilecoin/crypto/rand" }
+mc-util-grpc = { path = "../mobilecoin/util/grpc" }
+mc-util-serial = { path = "../mobilecoin/util/serial" }
+mc-util-telemetry = { path = "../mobilecoin/util/telemetry" }
+
+# bomb
+mc-bomb-api = { path = "../api" }
+mc-bomb-types = { path = "../types" }
+mc-bomb-uri = { path = "../uri" }
+
+# third-party
+aes-gcm = "0.10.1"
+cookie = "0.17"
+displaydoc = "0.2"
+grpcio = "0.12.1"
+hex = "0.4"
+rand_chacha = "0.3"
+rand_core = "0.6"
+retry = "2.0"
+sha2 = "0.10"

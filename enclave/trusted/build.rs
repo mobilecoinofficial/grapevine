@@ -58,7 +58,7 @@ fn main() {
     }
 
     let enclave_edl = env
-        .depvar("OMB_ENCLAVE_EDL_FILE")
+        .depvar("BOMB_ENCLAVE_EDL_FILE")
         .expect("Could not read EDL file");
 
     edger8r

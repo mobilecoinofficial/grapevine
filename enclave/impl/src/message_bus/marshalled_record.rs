@@ -4,7 +4,7 @@
 
 use super::{MessageBusValueSize, MsgId};
 use aligned_cmov::{
-    typenum::{U32, U64, U72, U8},
+    typenum::{Diff, U32, U64, U72, U8},
     A8Bytes, AsNeSlice,
 };
 use generic_array::sequence::Split;
@@ -24,6 +24,7 @@ use mc_bomb_types::Record;
 /// key.
 ///
 /// The payload, and record, are always fixed size given these parameters.
+#[derive(Default)]
 pub struct MarshalledRecord {
     data: A8Bytes<MessageBusValueSize>,
 }
@@ -65,7 +66,7 @@ impl MarshalledRecord {
         let mut data: A8Bytes<MessageBusValueSize> = Default::default();
         let (sender, rest): (&mut A8Bytes<U32>, &mut _) = (&mut data).split();
         let (recipient, rest): (&mut A8Bytes<U32>, &mut _) = rest.split();
-        let (timestamp, rest): (&mut A8Bytes<U32>, &mut _) = rest.split();
+        let (timestamp, rest): (&mut A8Bytes<U8>, &mut _) = rest.split();
 
         if proto_record.sender.len() != sender.as_slice().len() {
             return Err(QueryError::InvalidSenderLength(
@@ -143,5 +144,17 @@ impl MarshalledRecord {
         let (_sender, mid): (&mut A8Bytes<U64>, _) = (&mut self.data).split();
         let (timestamp, _rest): (&mut A8Bytes<U8>, _) = mid.split();
         &mut timestamp.as_mut_ne_u64_slice()[0]
+    }
+
+    /// Extract a reference to the payload
+    pub fn get_payload(&self) -> &A8Bytes<Diff<MessageBusValueSize, U72>> {
+        let (_header, payload): (&A8Bytes<U72>, _) = (&self.data).split();
+        payload
+    }
+
+    /// Extract a mutable reference to the payload
+    pub fn get_payload_mut(&mut self) -> &mut A8Bytes<Diff<MessageBusValueSize, U72>> {
+        let (_header, payload): (&mut A8Bytes<U72>, _) = (&mut self.data).split();
+        payload
     }
 }

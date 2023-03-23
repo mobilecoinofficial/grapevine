@@ -2,7 +2,7 @@
 
 use mc_util_uri::{Uri, UriScheme};
 
-pub use mc_util_uri::{ConnectionUri, FogUri, UriParseError};
+pub use mc_util_uri::{ConnectionUri, FogUri, UriConversionError, UriParseError};
 
 /// Bomb Uri Scheme
 #[derive(Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Clone)]

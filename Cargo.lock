@@ -129,6 +129,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8da52d66c7071e2e3fa2a1e5c6d088fec47b593032b254f5e980de8ea54454d6"
 
 [[package]]
+name = "assert_matches"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b34d609dfbaf33d6889b2b7106d3ca345eacad44200913df5ba02bfd31d2ba9"
+
+[[package]]
 name = "async-compression"
 version = "0.3.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -150,6 +156,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.1",
+]
+
+[[package]]
+name = "atomic-polyfill"
+version = "0.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3ff7eb3f316534d83a8a2c3d1674ace8a5a71198eba31e2e2b597833f699b28"
+dependencies = [
+ "critical-section",
 ]
 
 [[package]]
@@ -305,6 +320,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ab565ccc5e276ea82a2013dd08bf2c999866b06daf1d4f30fee419c4aaec6d5"
 dependencies = [
  "cmake",
+]
+
+[[package]]
+name = "bs58"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "771fe0050b883fcc3ea2359b1a96bcfbc090b7116eae7c3c512c7a083fdf23d3"
+
+[[package]]
+name = "bulletproofs-og"
+version = "3.0.0-pre.1"
+source = "git+https://github.com/mobilecoinfoundation/bulletproofs.git?rev=65f8af4ca0bc1cb2fd2148c3259a0a76b155ff3e#65f8af4ca0bc1cb2fd2148c3259a0a76b155ff3e"
+dependencies = [
+ "byteorder",
+ "clear_on_drop",
+ "curve25519-dalek",
+ "digest",
+ "merlin",
+ "rand_core 0.6.4",
+ "serde",
+ "serde_derive",
+ "sha3",
+ "subtle",
 ]
 
 [[package]]
@@ -546,6 +584,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "clear_on_drop"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38508a63f4979f0048febc9966fadbd48e5dab31fd0ec6a3f151bbf4a74f7423"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "cmake"
 version = "0.1.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -600,6 +647,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "crc"
+version = "3.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86ec7a15cbe22e59248fc7eadb1907dab5ba09372595da4d73dd805ed4417dfe"
+dependencies = [
+ "crc-catalog",
+]
+
+[[package]]
+name = "crc-catalog"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9cace84e55f07e7301bae1c519df89cdad8cc3cd868413d3fdbdeca9ff3db484"
+
+[[package]]
 name = "crc32fast"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -643,6 +705,12 @@ dependencies = [
  "cast",
  "itertools",
 ]
+
+[[package]]
+name = "critical-section"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6548a0ad5d2549e111e1f6a11a6c2e2d00ce6a3dafe22948d67c2b443f775e52"
 
 [[package]]
 name = "crossbeam-channel"
@@ -811,6 +879,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "difflib"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6184e33543162437515c2e2b48714794e37845ec9851711914eec9d308f6ebe8"
+
+[[package]]
 name = "digest"
 version = "0.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -852,6 +926,12 @@ dependencies = [
  "quote",
  "syn 1.0.109",
 ]
+
+[[package]]
+name = "downcast"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1435fa1053d8b2fbbe9be7e97eca7f33d37b28409959813daefc1446a14247f1"
 
 [[package]]
 name = "ed25519"
@@ -986,6 +1066,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "float-cmp"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "98de4bbd547a563b716d8dfa9aad1cb19bfab00f4fa09a6a4ed21dbcf44ce9c4"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -999,6 +1088,12 @@ checksum = "a9c384f161156f5260c24a097c56119f9be8c798586aecc13afbcbe7b7e26bf8"
 dependencies = [
  "percent-encoding",
 ]
+
+[[package]]
+name = "fragile"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c2141d6d6c8512188a7891b4b01590a45f6dac67afb4f255c4124dbb86d4eaa"
 
 [[package]]
 name = "futures"
@@ -1219,6 +1314,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eabb4a44450da02c90444cf74558da904edde8fb4e9035a9a6a4e15445af0bd7"
 
 [[package]]
+name = "hash32"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0c35f58762feb77d74ebe43bdbc3210f09be9fe6742234d573bacc26ed92b67"
+dependencies = [
+ "byteorder",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1256,6 +1360,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e7f66481bfee273957b1f20485a4ff3362987f85b2c236580d81b4eb7a326429"
 dependencies = [
  "http",
+]
+
+[[package]]
+name = "heapless"
+version = "0.7.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db04bc24a18b9ea980628ecf00e6c0264f3c1426dac36c00cb49b6fbad8b0743"
+dependencies = [
+ "atomic-polyfill",
+ "hash32",
+ "rustc_version",
+ "spin 0.9.6",
+ "stable_deref_trait",
 ]
 
 [[package]]
@@ -1559,6 +1676,9 @@ name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
+dependencies = [
+ "spin 0.5.2",
+]
 
 [[package]]
 name = "lazycell"
@@ -1616,10 +1736,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "linked-hash-map"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
+
+[[package]]
 name = "linux-raw-sys"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f051f77a7c8e6957c0696eac88f26b0117e54f52d3fc682ab19397a8812846a4"
+
+[[package]]
+name = "lmdb-rkv"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "447a296f7aca299cfbb50f4e4f3d49451549af655fb7215d7f8c0c3d64bad42b"
+dependencies = [
+ "bitflags",
+ "byteorder",
+ "libc",
+ "lmdb-rkv-sys",
+]
+
+[[package]]
+name = "lmdb-rkv-sys"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61b9ce6b3be08acefa3003c57b7565377432a89ec24476bbe72e11d101f852fe"
+dependencies = [
+ "cc",
+ "libc",
+ "pkg-config",
+]
 
 [[package]]
 name = "lock_api"
@@ -1639,6 +1788,12 @@ checksum = "abb12e687cfb44aa40f41fc3978ef76448f9b6038cad6aef4259d3c095a2382e"
 dependencies = [
  "cfg-if",
 ]
+
+[[package]]
+name = "maplit"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
 
 [[package]]
 name = "match_cfg"
@@ -1716,6 +1871,49 @@ name = "mc-account-keys-types"
 version = "4.1.0-pre0"
 dependencies = [
  "mc-crypto-keys",
+]
+
+[[package]]
+name = "mc-api"
+version = "4.1.0-pre0"
+dependencies = [
+ "bs58",
+ "cargo-emit",
+ "crc",
+ "curve25519-dalek",
+ "displaydoc",
+ "generic-array",
+ "mc-account-keys",
+ "mc-attest-verifier-types",
+ "mc-blockchain-test-utils",
+ "mc-blockchain-types",
+ "mc-common",
+ "mc-crypto-dalek",
+ "mc-crypto-keys",
+ "mc-crypto-multisig",
+ "mc-crypto-ring-signature-signer",
+ "mc-crypto-x509-test-vectors",
+ "mc-fog-report-validation-test-utils",
+ "mc-test-vectors-b58-encodings",
+ "mc-transaction-builder",
+ "mc-transaction-core",
+ "mc-transaction-extra",
+ "mc-util-build-grpc",
+ "mc-util-build-script",
+ "mc-util-from-random",
+ "mc-util-repr-bytes",
+ "mc-util-serial",
+ "mc-util-test-helper",
+ "mc-util-test-vector",
+ "mc-util-test-with-data",
+ "mc-util-zip-exact",
+ "mc-watcher-api",
+ "pem",
+ "prost",
+ "protobuf",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
+ "rand_hc 0.3.1",
 ]
 
 [[package]]
@@ -1890,6 +2088,47 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-blockchain-test-utils"
+version = "4.1.0-pre0"
+dependencies = [
+ "mc-blockchain-types",
+ "mc-common",
+ "mc-consensus-scp-types",
+ "mc-crypto-keys",
+ "mc-transaction-core",
+ "mc-transaction-core-test-utils",
+ "mc-util-from-random",
+ "mc-util-test-helper",
+]
+
+[[package]]
+name = "mc-blockchain-types"
+version = "4.1.0-pre0"
+dependencies = [
+ "displaydoc",
+ "hex_fmt",
+ "mc-account-keys",
+ "mc-attest-verifier-types",
+ "mc-blockchain-test-utils",
+ "mc-common",
+ "mc-consensus-scp-types",
+ "mc-crypto-digestible",
+ "mc-crypto-digestible-signature",
+ "mc-crypto-digestible-test-utils",
+ "mc-crypto-keys",
+ "mc-crypto-ring-signature",
+ "mc-transaction-core",
+ "mc-transaction-types",
+ "mc-util-from-random",
+ "mc-util-repr-bytes",
+ "mc-util-test-helper",
+ "prost",
+ "rand 0.8.5",
+ "serde",
+ "zeroize",
+]
+
+[[package]]
 name = "mc-bomb-api"
 version = "4.1.0-pre0"
 dependencies = [
@@ -1904,6 +2143,59 @@ dependencies = [
  "mc-util-test-helper",
  "prost",
  "protobuf",
+]
+
+[[package]]
+name = "mc-bomb-client"
+version = "4.1.0-pre0"
+dependencies = [
+ "chrono",
+ "clap 4.1.10",
+ "grpcio",
+ "hex",
+ "mc-attest-verifier",
+ "mc-bomb-connection",
+ "mc-bomb-enclave-measurement",
+ "mc-bomb-types",
+ "mc-bomb-uri",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-crypto-rand",
+ "mc-util-cli",
+ "mc-util-from-random",
+ "mc-util-grpc",
+ "mc-util-parse",
+ "mc-util-serial",
+ "serde_json",
+]
+
+[[package]]
+name = "mc-bomb-connection"
+version = "4.1.0-pre0"
+dependencies = [
+ "aes-gcm",
+ "cookie",
+ "displaydoc",
+ "grpcio",
+ "hex",
+ "mc-attest-ake",
+ "mc-attest-core",
+ "mc-attest-verifier",
+ "mc-bomb-api",
+ "mc-bomb-types",
+ "mc-bomb-uri",
+ "mc-common",
+ "mc-connection",
+ "mc-crypto-keys",
+ "mc-crypto-noise",
+ "mc-crypto-rand",
+ "mc-util-grpc",
+ "mc-util-serial",
+ "mc-util-telemetry",
+ "rand_chacha 0.3.1",
+ "rand_core 0.6.4",
+ "retry",
+ "sha2",
 ]
 
 [[package]]
@@ -2097,6 +2389,73 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-connection"
+version = "4.1.0-pre0"
+dependencies = [
+ "aes-gcm",
+ "cookie",
+ "displaydoc",
+ "grpcio",
+ "mc-attest-ake",
+ "mc-attest-api",
+ "mc-attest-core",
+ "mc-attest-verifier",
+ "mc-blockchain-types",
+ "mc-common",
+ "mc-consensus-api",
+ "mc-crypto-keys",
+ "mc-crypto-noise",
+ "mc-crypto-rand",
+ "mc-transaction-core",
+ "mc-util-grpc",
+ "mc-util-serial",
+ "mc-util-uri",
+ "rand 0.8.5",
+ "rand_hc 0.3.1",
+ "retry",
+ "secrecy",
+ "serde",
+ "sha2",
+]
+
+[[package]]
+name = "mc-consensus-api"
+version = "4.1.0-pre0"
+dependencies = [
+ "cargo-emit",
+ "futures",
+ "grpcio",
+ "mc-api",
+ "mc-attest-api",
+ "mc-crypto-multisig",
+ "mc-ledger-db",
+ "mc-transaction-core",
+ "mc-transaction-core-test-utils",
+ "mc-util-build-grpc",
+ "mc-util-build-script",
+ "mc-util-serial",
+ "protobuf",
+ "rand_core 0.6.4",
+ "rand_hc 0.3.1",
+]
+
+[[package]]
+name = "mc-consensus-scp-types"
+version = "4.1.0-pre0"
+dependencies = [
+ "mc-common",
+ "mc-crypto-digestible",
+ "mc-crypto-keys",
+ "mc-util-from-random",
+ "mc-util-serial",
+ "mc-util-test-helper",
+ "prost",
+ "rand 0.8.5",
+ "rand_hc 0.3.1",
+ "serde",
+]
+
+[[package]]
 name = "mc-core"
 version = "4.0.2"
 dependencies = [
@@ -2155,6 +2514,22 @@ dependencies = [
  "mc-sgx-compat",
  "mc-util-from-random",
  "sha2",
+]
+
+[[package]]
+name = "mc-crypto-box"
+version = "4.1.0-pre0"
+dependencies = [
+ "aead",
+ "digest",
+ "displaydoc",
+ "hkdf",
+ "mc-crypto-hashes",
+ "mc-crypto-keys",
+ "mc-oblivious-aes-gcm",
+ "mc-util-from-random",
+ "mc-util-test-helper",
+ "rand_core 0.6.4",
 ]
 
 [[package]]
@@ -2219,6 +2594,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-crypto-digestible-test-utils"
+version = "4.1.0-pre0"
+dependencies = [
+ "mc-crypto-digestible",
+ "serde_json",
+]
+
+[[package]]
 name = "mc-crypto-hashes"
 version = "4.1.0-pre0"
 dependencies = [
@@ -2264,6 +2647,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-crypto-multisig"
+version = "4.1.0-pre0"
+dependencies = [
+ "mc-crypto-digestible",
+ "mc-crypto-keys",
+ "mc-util-from-random",
+ "mc-util-serial",
+ "prost",
+ "rand_core 0.6.4",
+ "rand_hc 0.3.1",
+ "serde",
+]
+
+[[package]]
 name = "mc-crypto-noise"
 version = "4.1.0-pre0"
 dependencies = [
@@ -2294,6 +2691,60 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-crypto-ring-signature"
+version = "4.1.0-pre0"
+dependencies = [
+ "curve25519-dalek",
+ "displaydoc",
+ "ed25519-dalek",
+ "hex_fmt",
+ "mc-account-keys",
+ "mc-account-keys-types",
+ "mc-core-types",
+ "mc-crypto-dalek",
+ "mc-crypto-digestible",
+ "mc-crypto-digestible-test-utils",
+ "mc-crypto-hashes",
+ "mc-crypto-keys",
+ "mc-util-from-random",
+ "mc-util-repr-bytes",
+ "mc-util-serial",
+ "mc-util-test-helper",
+ "proptest",
+ "prost",
+ "rand_core 0.6.4",
+ "serde",
+ "subtle",
+ "zeroize",
+]
+
+[[package]]
+name = "mc-crypto-ring-signature-signer"
+version = "4.1.0-pre0"
+dependencies = [
+ "curve25519-dalek",
+ "displaydoc",
+ "generic-array",
+ "hex_fmt",
+ "mc-account-keys",
+ "mc-crypto-dalek",
+ "mc-crypto-digestible-test-utils",
+ "mc-crypto-keys",
+ "mc-crypto-rand",
+ "mc-crypto-ring-signature",
+ "mc-transaction-types",
+ "mc-util-serial",
+ "proptest",
+ "prost",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
+ "rand_hc 0.3.1",
+ "serde",
+ "subtle",
+ "zeroize",
+]
+
+[[package]]
 name = "mc-crypto-x509-test-vectors"
 version = "4.1.0-pre0"
 dependencies = [
@@ -2301,6 +2752,17 @@ dependencies = [
  "clap 4.1.10",
  "mc-crypto-keys",
  "mc-util-build-script",
+ "pem",
+ "x509-signature",
+]
+
+[[package]]
+name = "mc-crypto-x509-utils"
+version = "4.1.0-pre0"
+dependencies = [
+ "displaydoc",
+ "mc-crypto-keys",
+ "mc-crypto-x509-test-vectors",
  "pem",
  "x509-signature",
 ]
@@ -2332,6 +2794,58 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-fog-report-types"
+version = "4.1.0-pre0"
+dependencies = [
+ "mc-attest-core",
+ "mc-crypto-digestible",
+ "prost",
+ "serde",
+]
+
+[[package]]
+name = "mc-fog-report-validation"
+version = "4.1.0-pre0"
+dependencies = [
+ "displaydoc",
+ "mc-account-keys",
+ "mc-crypto-keys",
+ "mc-fog-sig",
+ "mc-util-serial",
+ "mc-util-uri",
+ "mockall",
+]
+
+[[package]]
+name = "mc-fog-report-validation-test-utils"
+version = "4.1.0-pre0"
+dependencies = [
+ "mc-account-keys",
+ "mc-fog-report-validation",
+]
+
+[[package]]
+name = "mc-fog-sig"
+version = "4.1.0-pre0"
+dependencies = [
+ "displaydoc",
+ "mc-account-keys",
+ "mc-attest-core",
+ "mc-crypto-keys",
+ "mc-crypto-x509-test-vectors",
+ "mc-crypto-x509-utils",
+ "mc-fog-report-types",
+ "mc-fog-sig-authority",
+ "mc-fog-sig-report",
+ "mc-util-from-random",
+ "pem",
+ "rand_core 0.6.4",
+ "rand_hc 0.3.1",
+ "signature",
+ "x509-signature",
+]
+
+[[package]]
 name = "mc-fog-sig-authority"
 version = "4.1.0-pre0"
 dependencies = [
@@ -2340,6 +2854,65 @@ dependencies = [
  "rand_core 0.6.4",
  "rand_hc 0.3.1",
  "signature",
+]
+
+[[package]]
+name = "mc-fog-sig-report"
+version = "4.1.0-pre0"
+dependencies = [
+ "displaydoc",
+ "mc-attest-core",
+ "mc-crypto-digestible-signature",
+ "mc-crypto-keys",
+ "mc-fog-report-types",
+ "mc-util-from-random",
+ "rand_core 0.6.4",
+ "rand_hc 0.3.1",
+ "signature",
+]
+
+[[package]]
+name = "mc-ledger-db"
+version = "4.1.0-pre0"
+dependencies = [
+ "displaydoc",
+ "lazy_static",
+ "lmdb-rkv",
+ "mc-account-keys",
+ "mc-blockchain-test-utils",
+ "mc-blockchain-types",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-crypto-multisig",
+ "mc-crypto-rand",
+ "mc-transaction-builder",
+ "mc-transaction-core",
+ "mc-transaction-core-test-utils",
+ "mc-util-from-random",
+ "mc-util-lmdb",
+ "mc-util-metrics",
+ "mc-util-serial",
+ "mc-util-telemetry",
+ "mc-util-test-helper",
+ "mockall",
+ "prost",
+ "rand 0.8.5",
+ "tempfile",
+]
+
+[[package]]
+name = "mc-oblivious-aes-gcm"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7be589d425ac3950edf94eb4185e625b4ca509d8caeab7ab461e107a73c3ebfb"
+dependencies = [
+ "aead",
+ "aes",
+ "cipher",
+ "ctr",
+ "ghash",
+ "subtle",
+ "zeroize",
 ]
 
 [[package]]
@@ -2521,12 +3094,178 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-test-vectors-b58-encodings"
+version = "4.1.0-pre0"
+dependencies = [
+ "mc-account-keys",
+ "mc-api",
+ "mc-test-vectors-definitions",
+ "mc-util-test-vector",
+]
+
+[[package]]
 name = "mc-test-vectors-definitions"
 version = "4.1.0-pre0"
 dependencies = [
  "mc-util-test-vector",
  "serde",
  "serde-big-array",
+]
+
+[[package]]
+name = "mc-transaction-builder"
+version = "4.1.0-pre0"
+dependencies = [
+ "assert_matches",
+ "cfg-if",
+ "curve25519-dalek",
+ "displaydoc",
+ "hmac",
+ "maplit",
+ "mc-account-keys",
+ "mc-crypto-dalek",
+ "mc-crypto-hashes",
+ "mc-crypto-keys",
+ "mc-crypto-ring-signature-signer",
+ "mc-fog-report-validation",
+ "mc-fog-report-validation-test-utils",
+ "mc-transaction-core",
+ "mc-transaction-extra",
+ "mc-transaction-types",
+ "mc-util-from-random",
+ "mc-util-serial",
+ "mc-util-test-helper",
+ "mc-util-u64-ratio",
+ "prost",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
+ "serde",
+ "sha2",
+ "subtle",
+ "yaml-rust",
+ "zeroize",
+]
+
+[[package]]
+name = "mc-transaction-core"
+version = "4.1.0-pre0"
+dependencies = [
+ "aes",
+ "assert_matches",
+ "bulletproofs-og",
+ "crc",
+ "ctr",
+ "curve25519-dalek",
+ "displaydoc",
+ "generic-array",
+ "hex_fmt",
+ "hkdf",
+ "lazy_static",
+ "mc-account-keys",
+ "mc-common",
+ "mc-crypto-box",
+ "mc-crypto-dalek",
+ "mc-crypto-digestible",
+ "mc-crypto-digestible-test-utils",
+ "mc-crypto-hashes",
+ "mc-crypto-keys",
+ "mc-crypto-multisig",
+ "mc-crypto-ring-signature",
+ "mc-crypto-ring-signature-signer",
+ "mc-fog-report-validation-test-utils",
+ "mc-ledger-db",
+ "mc-transaction-builder",
+ "mc-transaction-core-test-utils",
+ "mc-transaction-types",
+ "mc-util-from-random",
+ "mc-util-repr-bytes",
+ "mc-util-serial",
+ "mc-util-test-helper",
+ "mc-util-u64-ratio",
+ "mc-util-zip-exact",
+ "merlin",
+ "proptest",
+ "prost",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
+ "serde",
+ "sha2",
+ "subtle",
+ "zeroize",
+]
+
+[[package]]
+name = "mc-transaction-core-test-utils"
+version = "4.1.0-pre0"
+dependencies = [
+ "mc-account-keys",
+ "mc-crypto-keys",
+ "mc-crypto-multisig",
+ "mc-crypto-rand",
+ "mc-crypto-ring-signature-signer",
+ "mc-fog-report-validation-test-utils",
+ "mc-transaction-core",
+ "mc-util-from-random",
+ "mc-util-serial",
+]
+
+[[package]]
+name = "mc-transaction-extra"
+version = "4.1.0-pre0"
+dependencies = [
+ "assert_matches",
+ "cfg-if",
+ "curve25519-dalek",
+ "displaydoc",
+ "hmac",
+ "maplit",
+ "mc-account-keys",
+ "mc-core",
+ "mc-crypto-dalek",
+ "mc-crypto-digestible",
+ "mc-crypto-hashes",
+ "mc-crypto-keys",
+ "mc-crypto-ring-signature",
+ "mc-crypto-ring-signature-signer",
+ "mc-fog-report-validation-test-utils",
+ "mc-transaction-builder",
+ "mc-transaction-core",
+ "mc-transaction-types",
+ "mc-util-from-random",
+ "mc-util-repr-bytes",
+ "mc-util-serial",
+ "mc-util-test-helper",
+ "mc-util-u64-ratio",
+ "mc-util-vec-map",
+ "mc-util-zip-exact",
+ "prost",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
+ "serde",
+ "sha2",
+ "subtle",
+ "yaml-rust",
+ "zeroize",
+]
+
+[[package]]
+name = "mc-transaction-types"
+version = "4.1.0-pre0"
+dependencies = [
+ "crc",
+ "displaydoc",
+ "hkdf",
+ "mc-crypto-dalek",
+ "mc-crypto-digestible",
+ "mc-crypto-hashes",
+ "mc-crypto-keys",
+ "mc-crypto-ring-signature",
+ "proptest",
+ "prost",
+ "serde",
+ "sha2",
+ "subtle",
+ "zeroize",
 ]
 
 [[package]]
@@ -2648,6 +3387,16 @@ name = "mc-util-host-cert"
 version = "4.1.0-pre0"
 
 [[package]]
+name = "mc-util-lmdb"
+version = "4.1.0-pre0"
+dependencies = [
+ "displaydoc",
+ "lmdb-rkv",
+ "mc-util-serial",
+ "prost",
+]
+
+[[package]]
 name = "mc-util-logger-macros"
 version = "4.1.0-pre0"
 dependencies = [
@@ -2751,6 +3500,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-util-u64-ratio"
+version = "4.1.0-pre0"
+
+[[package]]
 name = "mc-util-uri"
 version = "4.1.0-pre0"
 dependencies = [
@@ -2766,6 +3519,29 @@ dependencies = [
  "rand_hc 0.3.1",
  "serde",
  "url",
+]
+
+[[package]]
+name = "mc-util-vec-map"
+version = "4.1.0-pre0"
+dependencies = [
+ "displaydoc",
+ "heapless",
+]
+
+[[package]]
+name = "mc-util-zip-exact"
+version = "4.1.0-pre0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "mc-watcher-api"
+version = "4.1.0-pre0"
+dependencies = [
+ "displaydoc",
+ "serde",
 ]
 
 [[package]]
@@ -2829,6 +3605,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "mockall"
+version = "0.11.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50e4a1c770583dac7ab5e2f6c139153b783a53a1bbee9729613f193e59828326"
+dependencies = [
+ "cfg-if",
+ "downcast",
+ "fragile",
+ "lazy_static",
+ "mockall_derive",
+ "predicates",
+ "predicates-tree",
+]
+
+[[package]]
+name = "mockall_derive"
+version = "0.11.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "832663583d5fa284ca8810bf7015e46c9fff9622d3cf34bd1eea5003fec06dd0"
+dependencies = [
+ "cfg-if",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "nom"
 version = "7.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2837,6 +3640,12 @@ dependencies = [
  "memchr",
  "minimal-lexical",
 ]
+
+[[package]]
+name = "normalize-line-endings"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61807f77802ff30975e01f4f071c8ba10c022052f98b3294119f3e615d13e5be"
 
 [[package]]
 name = "num-bigint"
@@ -3167,6 +3976,36 @@ name = "ppv-lite86"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
+
+[[package]]
+name = "predicates"
+version = "2.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59230a63c37f3e18569bdb90e4a89cbf5bf8b06fea0b84e65ea10cc4df47addd"
+dependencies = [
+ "difflib",
+ "float-cmp",
+ "itertools",
+ "normalize-line-endings",
+ "predicates-core",
+ "regex",
+]
+
+[[package]]
+name = "predicates-core"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b794032607612e7abeb4db69adb4e33590fa6cf1149e95fd7cb00e634b92f174"
+
+[[package]]
+name = "predicates-tree"
+version = "1.0.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "368ba315fb8c5052ab692e68a0eefec6ec57b23a36959c14496f0b0df2c0cecf"
+dependencies = [
+ "predicates-core",
+ "termtree",
+]
 
 [[package]]
 name = "proc-macro-error"
@@ -4194,6 +5033,15 @@ name = "spin"
 version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5d6e0250b93c8427a177b849d144a96d5acc57006149479403d7861ab721e34"
+dependencies = [
+ "lock_api",
+]
+
+[[package]]
+name = "stable_deref_trait"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "static_assertions"
@@ -4291,6 +5139,12 @@ checksum = "be55cf8942feac5c765c2c993422806843c9a9a45d4d5c407ad6dd2ea95eb9b6"
 dependencies = [
  "winapi-util",
 ]
+
+[[package]]
+name = "termtree"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3369f5ac52d5eb6ab48c6b4ffdc8efbcad6b89c765749064ba298f2c68a16a76"
 
 [[package]]
 name = "textwrap"
@@ -4949,6 +5803,15 @@ checksum = "9fb2bc2a902d992cd5f471ee3ab0ffd6603047a4207384562755b9d6de977518"
 dependencies = [
  "ring",
  "untrusted",
+]
+
+[[package]]
+name = "yaml-rust"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56c1936c4cc7a1c9ab21a1ebb602eb942ba868cbd44a99cb7cdc5892335e1c85"
+dependencies = [
+ "linked-hash-map",
 ]
 
 [[package]]

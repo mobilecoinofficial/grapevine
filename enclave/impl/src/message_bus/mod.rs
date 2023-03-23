@@ -15,9 +15,11 @@ use alloc::boxed::Box;
 use generic_array::sequence::Split;
 use mc_bomb_enclave_api::QueryError;
 use mc_bomb_types::{
-    QueryRequest, QueryResponse, STATUS_CODE_INTERNAL_ERROR, STATUS_CODE_INVALID_RECIPIENT,
-    STATUS_CODE_SUCCESS,
+    QueryRequest, QueryResponse, MC_BOMB_CHALLENGE_SIGNING_CONTEXT, REQUEST_TYPE_CREATE,
+    REQUEST_TYPE_DELETE, REQUEST_TYPE_UPDATE, STATUS_CODE_INTERNAL_ERROR,
+    STATUS_CODE_INVALID_RECIPIENT, STATUS_CODE_SUCCESS,
 };
+use mc_common::logger::Logger;
 use mc_crypto_keys::{RistrettoPublic, RistrettoSignature};
 use mc_crypto_rand::McRng;
 use mc_oblivious_map::CuckooHashTableCreator;
@@ -107,11 +109,20 @@ pub struct MessageBus<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>>
     /// Messages are considered expired if their timestamp is this far in the
     /// past.
     message_time_to_live: u64,
+
+    /// Logger
+    #[allow(unused)]
+    logger: Logger,
 }
 
 impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> MessageBus<OSC> {
     /// Create a new MessageBus object.
-    pub fn new(desired_capacity: u64, current_timestamp: u64, message_time_to_live: u64) -> Self {
+    pub fn new(
+        desired_capacity: u64,
+        current_timestamp: u64,
+        message_time_to_live: u64,
+        logger: Logger,
+    ) -> Self {
         Self {
             ids_to_messages: Box::new(<ObliviousMapCreator<OSC> as OMapCreator<
                 MessageBusKeySize,
@@ -129,6 +140,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> MessageBus<OSC> 
             )),
             current_timestamp,
             message_time_to_live,
+            logger,
         }
     }
 
@@ -159,7 +171,11 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> MessageBus<OSC> 
         // challenge value.
         let decompressed_identity = RistrettoPublic::try_from(&query.auth_identity[..])?;
         let sig = RistrettoSignature::try_from(&query.auth_signature[..])?;
-        decompressed_identity.verify_schnorrkel(b"mc-bomb-challenge", challenge_value, &sig)?;
+        decompressed_identity.verify_schnorrkel(
+            MC_BOMB_CHALLENGE_SIGNING_CONTEXT,
+            challenge_value,
+            &sig,
+        )?;
 
         // In the specific case that the caller did not set request type to a nonzero
         // value, fail hard and fast, because this breaks security.
@@ -170,7 +186,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> MessageBus<OSC> 
 
         // Call the appropriate helper
         match query.request_type {
-            1 => Ok(self.create_record(query)?),
+            REQUEST_TYPE_CREATE => Ok(self.create_record(query)?),
             _ => Ok(self.access_record(query)?),
         }
     }
@@ -316,8 +332,8 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> MessageBus<OSC> 
     //   constant-time. The user can reliably avoid it by not using update with the
     //   all-zeroes message id.
     fn access_record(&mut self, query: &QueryRequest) -> Result<QueryResponse, QueryError> {
-        let is_update_request = query.request_type.ct_eq(&3);
-        let is_delete_request = query.request_type.ct_eq(&4);
+        let is_update_request = query.request_type.ct_eq(&REQUEST_TYPE_UPDATE);
+        let is_delete_request = query.request_type.ct_eq(&REQUEST_TYPE_DELETE);
 
         // Make the identity bytes aligned for faster testing later.
         let identity: A8Bytes<U32> = Aligned(
@@ -325,17 +341,14 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> MessageBus<OSC> 
                 .map_err(|_| QueryError::InvalidAuthIdentityLength(query.auth_identity.len(), 32))?
                 .into(),
         );
-        let (mut id, mut marshalled) = MarshalledRecord::new_from_proto(&query.record)?;
+        let (mut id, marshalled) = MarshalledRecord::new_from_proto(&query.record)?;
         let id_is_zero = id.ct_eq(&Default::default());
 
         if bool::from(id_is_zero & is_update_request) {
             return Err(QueryError::CannotUpdateZeroesEntry);
         }
 
-        marshalled
-            .get_timestamp_mut()
-            .cmov(is_update_request, &self.current_timestamp);
-
+        let mut result_id: MsgId = Default::default();
         let mut result_record: A8Bytes<MessageBusValueSize> = Default::default();
 
         let mut message_omap_result_code = 0u32;
@@ -381,15 +394,19 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> MessageBus<OSC> 
                             + self.message_time_to_live)
                             .ct_lt(&self.current_timestamp);
 
-                        // We should return this record as long as the user has permission. (Read
-                        // update and delete)
+                        // We should return this record as long as the user has permission,
+                        // for all of read, update and delete.
+                        result_id.cmov(has_permission, &id);
                         result_record.cmov(has_permission, record.as_ref());
 
                         // We should modify this record only if it is an update request, and the
                         // user has permission
                         record
-                            .as_mut()
-                            .cmov(has_permission & is_update_request, marshalled.as_ref());
+                            .get_timestamp_mut()
+                            .cmov(has_permission & is_update_request, &self.current_timestamp);
+                        record
+                            .get_payload_mut()
+                            .cmov(has_permission & is_update_request, marshalled.get_payload());
 
                         // We should delete this record only if it is a delete request, and the user
                         // has permission, OR if the timestamp is expired.
@@ -437,7 +454,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> MessageBus<OSC> 
         );
 
         Ok(QueryResponse {
-            record: MarshalledRecord::from(result_record).to_proto(&id),
+            record: MarshalledRecord::from(result_record).to_proto(&result_id),
             status_code,
         })
     }
