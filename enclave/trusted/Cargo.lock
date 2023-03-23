@@ -768,7 +768,6 @@ version = "4.0.2"
 dependencies = [
  "aligned-cmov 2.2.0 (git+https://github.com/mobilecoinfoundation/mc-oblivious?rev=d80f47da277e61cb3daf034098630a23ee41ba12)",
  "generic-array",
- "hex",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-bomb-enclave-api",

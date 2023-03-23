@@ -2260,7 +2260,6 @@ version = "4.0.2"
 dependencies = [
  "aligned-cmov",
  "generic-array",
- "hex",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-bomb-enclave-api",
