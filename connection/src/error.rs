@@ -57,6 +57,8 @@ pub enum EnclaveConnectionError {
     ProtoDecode(DecodeError),
     /// Invalid challenge seed: Expected 32 bytes, found {0}
     InvalidChallengeSeed(usize),
+    /// A signer error: {0}
+    Signer(String),
 }
 
 impl AttestationError for EnclaveConnectionError {
@@ -71,6 +73,7 @@ impl AttestationError for EnclaveConnectionError {
             Self::Ake(_) => true,
             Self::InvalidUri(_) => false,
             Self::InvalidChallengeSeed(_) => true,
+            Self::Signer(_) => true,
         }
     }
 }

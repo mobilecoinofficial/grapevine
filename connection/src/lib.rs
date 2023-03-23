@@ -21,7 +21,7 @@ use mc_common::{
     trace_time,
 };
 use mc_connection::{AttestationError, AttestedConnection, Connection};
-use mc_crypto_keys::{CompressedRistrettoPublic, Signature, X25519};
+use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic, Signature, X25519};
 use mc_crypto_rand::McRng;
 use mc_util_grpc::{
     BasicCredentials, ConnectionUriGrpcioChannel, GrpcCookieStore, GrpcRetryConfig,
@@ -228,31 +228,11 @@ impl<S: RistrettoSigner + Send + Sync> BombGrpcConnection<S> {
     }
 
     fn request(&mut self, request_type: u32, rec: Record) -> Result<QueryResponse, Error> {
-        let signer_id = self.signer.get_public_key().map_err(|err| Error {
-            uri: self.uri.clone(),
-            error: RequestError::Signer(err.to_string()),
-        })?;
-
-        let sig = self
-            .signer
-            .sign(MC_BOMB_CHALLENGE_SIGNING_CONTEXT, &self.challenge_bytes)
-            .map_err(|err| Error {
-                uri: self.uri.clone(),
-                error: RequestError::Signer(err.to_string()),
-            })?;
-
-        let req = QueryRequest {
-            auth_identity: signer_id.as_bytes().to_vec(),
-            auth_signature: sig.as_bytes().to_vec(),
-            request_type,
-            record: rec,
-        };
-
         tracer!().in_span("bomb_grpc_request", |_cx_| {
             trace_time!(self.logger, "BombGrpcClient::request");
             let retry_config = self.grpc_retry_config;
             retry_config
-                .retry(|| self.retriable_encrypted_enclave_request(&req))
+                .retry(|| self.retriable_encrypted_enclave_request(request_type, &rec))
                 .map_err(|error| Error {
                     uri: self.uri.clone(),
                     error: RequestError::Connection(error),
@@ -260,16 +240,17 @@ impl<S: RistrettoSigner + Send + Sync> BombGrpcConnection<S> {
         })
     }
 
-    /// Same as encrypted_enclave_request, but convert result to an
-    /// OperationResult for use with the retry crate
-    fn retriable_encrypted_enclave_request<
-        RequestMessage: mc_util_serial::Message,
-        ResponseMessage: mc_util_serial::Message + Default,
-    >(
+    /// Perform the signature over the current challenge buffer, and assemble
+    /// a request.
+    /// The challenge buffer is advanced when responses succeed, and trashed
+    /// when we have to re-attest.
+    /// Convert result to an OperationResult for use with the retry crate.
+    fn retriable_encrypted_enclave_request(
         &mut self,
-        plaintext_request: &RequestMessage,
-    ) -> OperationResult<ResponseMessage, EnclaveConnectionError> {
-        match self.encrypted_enclave_request(plaintext_request, &[]) {
+        request_type: u32,
+        rec: &Record,
+    ) -> OperationResult<QueryResponse, EnclaveConnectionError> {
+        match self.encrypted_enclave_request(request_type, rec) {
             Ok(value) => OperationResult::Ok(value),
             Err(err) => {
                 if err.should_retry() {
@@ -305,17 +286,56 @@ impl<S: RistrettoSigner + Send + Sync> BombGrpcConnection<S> {
     /// enclave, and any aad data, which will be nonmalleable, but visible
     /// to untrusted. Returns the decrypted and deserialized response
     /// object.
-    fn encrypted_enclave_request<
-        RequestMessage: mc_util_serial::Message,
-        ResponseMessage: mc_util_serial::Message + Default,
-    >(
+    fn encrypted_enclave_request(
         &mut self,
-        plaintext_request: &RequestMessage,
-        aad: &[u8],
-    ) -> Result<ResponseMessage, EnclaveConnectionError> {
+        request_type: u32,
+        rec: &Record,
+    ) -> Result<QueryResponse, EnclaveConnectionError> {
         if !self.is_attested() {
             let _verification_report = self.attest()?;
         }
+
+        let signer_id = self
+            .signer
+            .get_public_key()
+            .map_err(|err| EnclaveConnectionError::Signer(err.to_string()))?;
+        let sig = self
+            .signer
+            .sign(MC_BOMB_CHALLENGE_SIGNING_CONTEXT, &self.challenge_bytes)
+            .map_err(|err| EnclaveConnectionError::Signer(err.to_string()))?;
+
+        log::trace!(
+            self.logger,
+            "client challenge bytes: {}",
+            hex::encode(&self.challenge_bytes)
+        );
+        log::trace!(
+            self.logger,
+            "client auth_identity: {}",
+            hex::encode(signer_id.as_bytes())
+        );
+        log::trace!(
+            self.logger,
+            "client auth_sig: {}",
+            hex::encode(sig.as_bytes())
+        );
+
+        // Sanity check the sig
+        RistrettoPublic::try_from(&signer_id)
+            .unwrap()
+            .verify_schnorrkel(
+                MC_BOMB_CHALLENGE_SIGNING_CONTEXT,
+                &self.challenge_bytes,
+                &sig,
+            )
+            .expect("client sig mismatch");
+
+        let plaintext_request = QueryRequest {
+            auth_identity: signer_id.as_bytes().to_vec(),
+            auth_signature: sig.as_bytes().to_vec(),
+            request_type,
+            record: rec.clone(),
+        };
 
         // Build encrypted request, scope attest_cipher borrow
         let msg = {
@@ -327,9 +347,9 @@ impl<S: RistrettoSigner + Send + Sync> BombGrpcConnection<S> {
             let mut msg = attest::Message::new();
             msg.set_channel_id(Vec::from(attest_cipher.binding()));
 
-            let plaintext_bytes = mc_util_serial::encode(plaintext_request);
+            let plaintext_bytes = mc_util_serial::encode(&plaintext_request);
 
-            let request_ciphertext = attest_cipher.encrypt(aad, &plaintext_bytes)?;
+            let request_ciphertext = attest_cipher.encrypt(&[], &plaintext_bytes)?;
             msg.set_data(request_ciphertext);
             msg
         };
@@ -373,7 +393,7 @@ impl<S: RistrettoSigner + Send + Sync> BombGrpcConnection<S> {
                 .expect("no enclave_connection even though attest succeeded");
 
             let plaintext_bytes = attest_cipher.decrypt(message.get_aad(), message.get_data())?;
-            let plaintext_response: ResponseMessage = mc_util_serial::decode(&plaintext_bytes)?;
+            let plaintext_response: QueryResponse = mc_util_serial::decode(&plaintext_bytes)?;
             Ok(plaintext_response)
         }
     }
@@ -382,6 +402,11 @@ impl<S: RistrettoSigner + Send + Sync> BombGrpcConnection<S> {
     fn next_challenge(&mut self) {
         if let Some(generator) = self.challenge_generator.as_mut() {
             generator.fill_bytes(&mut self.challenge_bytes[..]);
+            log::trace!(
+                self.logger,
+                "Advancing challenge buffer: challenge bytes are now \"{}\"",
+                hex::encode(&self.challenge_bytes)
+            );
         } else {
             panic!("no generator available, this is a logic error");
         }
@@ -407,7 +432,8 @@ impl<S: RistrettoSigner + Send + Sync> AttestedConnection for BombGrpcConnection
     }
 
     fn attest(&mut self) -> Result<VerificationReport, Self::Error> {
-        trace_time!(self.logger, "FogClient::attest");
+        log::debug!(self.logger, "attesting");
+        trace_time!(self.logger, "BombGrpcClient::attest");
         // If we have an existing attestation, nuke it.
         self.deattest();
 
@@ -458,6 +484,11 @@ impl<S: RistrettoSigner + Send + Sync> AttestedConnection for BombGrpcConnection
         let challenge_seed: [u8; 32] = (&challenge_seed[..])
             .try_into()
             .map_err(|_| EnclaveConnectionError::InvalidChallengeSeed(challenge_seed.len()))?;
+        log::debug!(
+            self.logger,
+            "Obtained challenge seed: {}",
+            hex::encode(&challenge_seed)
+        );
 
         self.challenge_generator = Some(ChaCha20Rng::from_seed(challenge_seed));
         // Initialize the buffer with the first challenge value.
