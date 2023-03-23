@@ -2177,6 +2177,7 @@ dependencies = [
  "cookie",
  "displaydoc",
  "grpcio",
+ "hex",
  "mc-attest-ake",
  "mc-attest-core",
  "mc-attest-verifier",
@@ -2259,6 +2260,7 @@ version = "4.0.2"
 dependencies = [
  "aligned-cmov",
  "generic-array",
+ "hex",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-bomb-enclave-api",

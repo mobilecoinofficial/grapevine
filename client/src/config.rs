@@ -83,14 +83,15 @@ pub enum BombClientCommand {
     Delete {
         /// The id of the message we wish to delete.
         #[clap(long, value_parser = parse_hex::<[u8; 16]>, env = "MC_MSG_ID")]
-        msg_id: [u8; 16],
+        msg_id: Option<[u8; 16]>,
 
         /// The recipient of the message.
+        /// Defaults to ourself.
         /// Delete will fail if this is not correct.
         /// (This is needed in order to delete the record in the other table as
         /// well. We cannot access the tables in the other order if we
         /// want to have the same access pattern as a READ operation)
         #[clap(long, value_parser = parse_hex::<[u8; 32]>, env = "MC_RECIPIENT")]
-        recipient: [u8; 32],
+        recipient: Option<[u8; 32]>,
     },
 }

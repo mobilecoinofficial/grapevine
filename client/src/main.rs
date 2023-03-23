@@ -32,6 +32,8 @@ fn main() {
     eprintln!("Success");
 }
 
+// This function exists because returning errors directly from main debug prints
+// them instead of display printing them.
 fn do_work(config: BombClientConfig, logger: Logger) -> Result<(), Error> {
     let get_conn = || -> BombGrpcConnection<RistrettoPrivate> {
         let uri = config
@@ -51,10 +53,8 @@ fn do_work(config: BombClientConfig, logger: Logger) -> Result<(), Error> {
         let retry_config = GrpcRetryConfig::default();
 
         let mut verifier = Verifier::default();
-        let mr_enclave_verifier = mc_bomb_enclave_measurement::get_mr_enclave_verifier();
-        verifier
-            .debug(DEBUG_ENCLAVE)
-            .mr_enclave(mr_enclave_verifier);
+        let mr_signer_verifier = mc_bomb_enclave_measurement::get_mr_signer_verifier(None);
+        verifier.debug(DEBUG_ENCLAVE).mr_signer(mr_signer_verifier);
 
         log::debug!(logger, "Attestation verifier: {:?}", &verifier);
         BombGrpcConnection::new(
@@ -103,14 +103,14 @@ fn do_work(config: BombClientConfig, logger: Logger) -> Result<(), Error> {
 
             let mut conn = get_conn();
             let resp = conn.create(&msg_id, &recipient, &message)?;
-            pretty_print_response(&resp);
+            println!("{}", pretty_print_response(&resp));
         }
         BombClientCommand::Read { msg_id } => {
             let msg_id = msg_id.unwrap_or([0u8; 16]);
 
             let mut conn = get_conn();
             let resp = conn.read(&msg_id)?;
-            pretty_print_response(&resp);
+            println!("{}", pretty_print_response(&resp));
         }
 
         BombClientCommand::Update {
@@ -123,15 +123,28 @@ fn do_work(config: BombClientConfig, logger: Logger) -> Result<(), Error> {
 
             let mut conn = get_conn();
             let resp = conn.update(&msg_id, &recipient, &message)?;
-            pretty_print_response(&resp);
+            println!("{}", pretty_print_response(&resp));
         }
 
         BombClientCommand::Delete { msg_id, recipient } => {
-            let recipient = CompressedRistrettoPublic::from(&recipient);
+            let msg_id = msg_id.unwrap_or([0u8; 16]);
+            let recipient = recipient
+                .as_ref()
+                .map(CompressedRistrettoPublic::from)
+                .unwrap_or_else(|| {
+                    let secret_key = RistrettoPrivate::try_from(
+                        config
+                            .secret_key
+                            .as_ref()
+                            .expect("secret key required for this operation"),
+                    )
+                    .expect("invalid secret key");
+                    CompressedRistrettoPublic::from(&RistrettoPublic::from(&secret_key))
+                });
 
             let mut conn = get_conn();
             let resp = conn.delete(&msg_id, &recipient)?;
-            pretty_print_response(&resp);
+            println!("{}", pretty_print_response(&resp));
         }
     }
     Ok(())
@@ -179,7 +192,7 @@ fn pretty_print_response(resp: &QueryResponse) -> String {
         "sender": hex::encode(&resp.record.sender),
         "recipient": hex::encode(&resp.record.recipient),
         "timestamp": time_string,
-        "payload": payload_to_string(&resp.record.payload),
+        "message": payload_to_string(&resp.record.payload),
     });
 
     to_string_pretty(&json!({
