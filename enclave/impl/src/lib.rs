@@ -96,6 +96,7 @@ where
                 params.desired_capacity,
                 params.current_timestamp,
                 params.msg_ttl,
+                self.logger.clone(),
             ));
         }
         Ok(())
@@ -128,6 +129,7 @@ where
 
             challenge_seed
         };
+
         let encrypted_challenge_seed =
             self.ake
                 .client_encrypt(&client_session, &[], &challenge_seed)?;

@@ -29,6 +29,7 @@ mc-oblivious-traits = { git = "https://github.com/mobilecoinfoundation/mc-oblivi
 mc-bomb-enclave-api = { path = "../api" }
 mc-bomb-types = { path = "../../types" }
 
+# third-party
 rand_chacha = { version = "0.3", default-features = false }
 
 [dev-dependencies]
