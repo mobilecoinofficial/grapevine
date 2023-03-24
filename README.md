@@ -1,4 +1,4 @@
-# MobileCoin Basic Oblivious Message Broker
+# MobileCoin Basic Oblivious Message Broker (mc-bomb)
 
 [![Project Chat][chat-image]][chat-link]<!--
 -->![License][license-image]<!--
@@ -9,6 +9,8 @@
 
 This is a prototype oblivious message broker, which allows posting messages for
 a recipient, and searching for messages, using a CRUD API.
+
+## Introduction
 
 Let's suppose you have the following situation.
 
@@ -63,7 +65,7 @@ The service generally attempts to be oblivious about:
 * If a message was read, updated, or deleted, which is the case, and avoid revealing anything about the message or
   the success or failure of these operations (except in API-misuse scenarios).
 
-## Limits
+### Limits
 
 The broker has a maximum capacity for messages which cannot be exceeded. This could be reasonably configured
 to be close to the RAM limits of the machine.
@@ -76,7 +78,7 @@ Currently, in the use-cases that we envision, sending someone more than 62 concu
 We expect that ultimately users will have to provide an auth token to talk to this service at all, and this can be a vehicle
 to rate limit how quickly users can create messages.
 
-## Message expiry
+### Message expiry
 
 To ensure that messages leave the broker after some time, messages enter the broker's storage with an
 approximate timestamp, and when a certain expiry period has passed, they are deleted in
@@ -91,7 +93,7 @@ the privacy properties of the message broker.
 
 Note: In the MVP we didn't fully implement eviction of expired messages from the hashmap.
 
-## Durable messages
+### Durable messages
 
 In some applications, it might be desired that Alice and Bob can always recover their historical
 messages that they sent and received. It is recommended that they do this by writing encrypted
@@ -107,12 +109,12 @@ If you think you need oblivious kafka for your use-case,
 you probably actually need an adapted version of MobileCoin Fog (fog-ingest and fog-view working together)
 and not this service.
 
-## High availability
+### High availability
 
 For high availability, the right thing is likely that the message broker should be able to perform node-to-node
 attestation with peers and replicate the messages to them. (In the MVP we do not plan to do this, however.)
 
-# Overview
+## Overview
 
 This repo contains both a grpc service (in rust) and an enclave (in rust). You can build both with `cargo build`.
 
@@ -120,7 +122,7 @@ Configuring and starting it should be relatively straightforward, see `./mc-bomb
 
 You can study the example client to get started, or you can start by referring to the API docs below.
 
-## Message
+### Message
 
 Each messsage is conceptually 1024 bytes with the following layout:
 
@@ -151,7 +153,7 @@ we allow clients to decide the semantics and make this implementation able to se
 The id bytes are any 16 bytes of your choosing, except all zeroes. It is suggested that they can be random.
 An all-zeroes value is not a valid id.
 
-# API
+## API
 
 The broker allows you to perform CRUD operations:
 
@@ -173,10 +175,10 @@ of `mc-noise` cipher which you can use to encrypt messages for the enclave.
 2. Then, look at the `client_request` API of the `mc-bomb-api` proto file. You will encrypt a `QueryRequest` object for the
    enclave, proudcing an `attest::Message` object which you will attach to that API. When you get a response, you can decrypt it
    using your cipher object, and then try to decode the `QueryResponse` object and interpret it.
-   
+
 For more detailed info about `QueryRequest` and `QueryResponse`, see the `bomb.proto` file comments.
 
-## Authentication
+### Authentication
 
 The idea when authenticating with the broker is:
 
@@ -191,11 +193,11 @@ See the example client for more details about this.
 
 See the `mc-crypto-keys` crate for details about this signature scheme. You need to call the `sign_schnorrkel` function on `RistrettoPrivate` (or some wrapper of this).
 
-## HTTP interface?
+### HTTP interface?
 
 If you need an HTTP interface, it is recommended to use `go-grpc-gateway`, build it against the `bomb.proto`, and deploy it alongside this service.
 
-# Contributing
+## Contributing
 
 For more background on this, it's suggested that you can:
 
