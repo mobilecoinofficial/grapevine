@@ -13,7 +13,7 @@ env:
 jobs:
   # TODO: Fix automatically
   lint:
-    runs-on: ubuntu-22.04
+    container: mobilecoin/builder-install:v0.0.25
     steps:
       - uses: actions/checkout@v3
         with:
@@ -31,7 +31,7 @@ jobs:
       - run: yamllint -s .
 
   crev:
-    runs-on: ubuntu-22.04
+    container: mobilecoin/builder-install:v0.0.25
     needs:
       - lint
     # TODO: once we have enough reviews, make this a required check
@@ -115,7 +115,7 @@ jobs:
           # yamllint enable rule:line-length
 
   deny:
-    runs-on: ubuntu-22.04
+    container: mobilecoin/builder-install:v0.0.25
     needs:
       - lint
     strategy:
@@ -134,7 +134,7 @@ jobs:
           command: check ${{ matrix.checks }}
 
   sort:
-    runs-on: ubuntu-22.04
+    container: mobilecoin/builder-install:v0.0.25
     needs:
       - lint
     steps:
@@ -149,7 +149,7 @@ jobs:
       # TODO: Fix automatically
 
   clippy:
-    runs-on: ubuntu-22.04
+    container: mobilecoin/builder-install:v0.0.25
     needs:
       - lint
     strategy:
@@ -172,7 +172,7 @@ jobs:
       # TODO: Fix automatically, or post GH-suggestions comments
 
   build:
-    runs-on: ubuntu-22.04
+    container: mobilecoin/builder-install:v0.0.25
     needs:
       - lint
     strategy:
@@ -208,7 +208,7 @@ jobs:
       - run: cargo +${{ matrix.rust }} test --release
 
   doc:
-    runs-on: ubuntu-22.04
+    container: mobilecoin/builder-install:v0.0.25
     needs:
       - lint
     strategy:
@@ -229,7 +229,7 @@ jobs:
       - run: cargo +${{ matrix.rust }} doc --release --no-deps
 
   coverage:
-    runs-on: ubuntu-22.04
+    container: mobilecoin/builder-install:v0.0.25
     needs:
       - lint
     steps:
