@@ -13,8 +13,7 @@ env:
 jobs:
   # TODO: Fix automatically
   lint:
-    runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.25
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
         with:
@@ -23,7 +22,7 @@ jobs:
         with:
           components: rustfmt
       - uses: r7kamura/rust-problem-matchers@v1
-      - run: cargo fmt --all -- --check
+      - run: cargo +stable fmt --all -- --check
       - uses: xt0rted/markdownlint-problem-matcher@v2
       - uses: DavidAnson/markdownlint-cli2-action@v9
         with:
