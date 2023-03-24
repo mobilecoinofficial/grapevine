@@ -19,10 +19,8 @@ allow = [
     "ISC",
     "MIT",
     "Unicode-DFS-2016",
-    "GPL-3.0-only",
-    "GPL-3.0-or-later",
-    "LGPL-3.0-only",
-    "LGPL-3.0-or-later",
+    "GPL-3.0",
+    "LGPL-3.0",
 ]
 deny = []
 copyleft = "allow"
