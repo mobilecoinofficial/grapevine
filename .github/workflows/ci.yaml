@@ -9,6 +9,9 @@ name: ci
 
 env:
   CARGO_INCREMENTAL: 0
+  # We are on an old nightly so we can't use sparse,
+  # remove this when we get past 2023-03-23 nightly
+  CARGO_REGISTRIES_CRATES_IO_PROTOCOL: "git"
 
 jobs:
   # TODO: Fix automatically
@@ -152,7 +155,7 @@ jobs:
     strategy:
       matrix:
         rust:
-          - nightly-2023-03-23
+          - nightly-2023-01-04
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
@@ -175,7 +178,7 @@ jobs:
     strategy:
       matrix:
         rust:
-          - nightly-2023-03-23
+          - nightly-2023-01-04
     steps:
       - uses: actions/checkout@v3
         with:
@@ -194,7 +197,7 @@ jobs:
     strategy:
       matrix:
         rust:
-          - nightly-2023-03-23
+          - nightly-2023-01-04
     steps:
       - uses: actions/checkout@v3
         with:
@@ -213,7 +216,7 @@ jobs:
     strategy:
       matrix:
         rust:
-          - nightly-2023-03-23
+          - nightly-2023-01-04
     steps:
       - uses: actions/checkout@v3
         with:
