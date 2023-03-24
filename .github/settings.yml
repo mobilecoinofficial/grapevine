@@ -97,7 +97,7 @@ branches:
           - lint
           - "deny (bans licenses sources)"
           - sort
-          - "clippy (stable)"
+          - "clippy (nightly-2023-01-04)"
           - "build (nightly-2023-01-04)"
           - "test (nightly-2023-01-04)"
           - coverage
