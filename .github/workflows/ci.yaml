@@ -16,20 +16,13 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
-        with:
-          submodules: true
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
       - uses: r7kamura/rust-problem-matchers@v1
-      - run: cargo +nightly fmt --all -- --check
+      - run: cargo fmt --all -- --check
       - uses: xt0rted/markdownlint-problem-matcher@v2
       - uses: DavidAnson/markdownlint-cli2-action@v9
-        with:
-          globs: |
-            **/*.md
-            !mobilecoin/**
-            !.github/pull_request_template.md
       # FIXME: Add yamllint problem matcher
       - run: yamllint -s .
 
