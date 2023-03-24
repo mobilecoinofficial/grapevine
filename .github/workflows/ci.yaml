@@ -16,11 +16,12 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
       - uses: r7kamura/rust-problem-matchers@v1
-      - run: cargo fmt --all -- --check
+      # Hack: the rust-toolchain file confuses cargo fmt what version to use
+      - run: rm rust-toolchain && cargo fmt --all -- --check
       - uses: xt0rted/markdownlint-problem-matcher@v2
       - uses: DavidAnson/markdownlint-cli2-action@v9
       # FIXME: Add yamllint problem matcher
