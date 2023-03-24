@@ -101,6 +101,6 @@ branches:
           - "build (nightly-2023-01-04)"
           - "test (nightly-2023-01-04)"
           - coverage
-      enforce_admins: true
+      enforce_admins: false
       required_linear_history: true
       restrictions: null
