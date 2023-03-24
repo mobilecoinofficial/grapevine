@@ -197,10 +197,15 @@ If you need an HTTP interface, it is recommended to use `go-grpc-gateway`, build
 
 # Contributing
 
-For more background on this, it's recommended that you checkout [mobilecoin fog](https://github.com/mobilecoinfoundation/mobilecoin/tree/master/fog) and
-the [fog threat model](https://github.com/mobilecoinfoundation/mobilecoin/tree/master/fog-threat-model-2.1.0.md).
+For more background on this, it's suggested that you can:
 
-Please join our discord also, we are friendly!
+* Check out slides from [a talk we gave about mobilecoin fog](https://docs.google.com/presentation/d/1SPuLkYun-UwW8MCPjSIUz3zM5VspNJkUtODc3_wYfd0/edit?usp=sharing)
+* Read the [ELI5 for mobilecoin fog](https://mobilecoin.com/learn/explain-like-im-five/fog/)
+* Read the [fog threat model](https://github.com/mobilecoinfoundation/mobilecoin/tree/master/fog-threat-model-2.1.0.md).
+* Read references and citations in [mobilecoinfoundation/mc-oblivious](https://github.com/mobilecoinfoundation/mc-oblivious), or check out the sources
+* Read the [fog whitepaper](https://mobilecoin.com/learn/read-the-whitepapers/mobilecoin-fog/)
+
+Please join our [discord](https://discord.gg/mobilecoin) also, we are friendly!
 
 To build, you will need to do `git submodule init` first, and it is recommended to build within the docker container, which will set up many SGX libs for you.
 Start with `./mob prompt` and then `cargo build` should work from there.
