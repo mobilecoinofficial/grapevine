@@ -1,4 +1,4 @@
-# MobileCoin Basic Oblivious Message Broker (mc-bomb)
+# grapevine
 
 [![Project Chat][chat-image]][chat-link]<!--
 -->![License][license-image]<!--
@@ -7,8 +7,13 @@
 -->[![GitHub Workflow Status][gha-image]][gha-link]<!--
 -->[![Contributor Covenant][conduct-image]][conduct-link]
 
-This is a prototype oblivious message broker, which allows posting messages for
-a recipient, and searching for messages, using a CRUD API.
+Soundtrack: ["I heard it through the grapevine", Marvin Gaye 1968](https://spotify.link/C3XSUrW6qyb)
+
+Grapevine is a prototype oblivious message bus, which allows posting messages for
+an intended recipient, and searching for messages intended for you, using a CRUD API,
+while revealing very little information to the service operator.
+
+Powered by [MobileCoin's SGX infrastructure](https://github.com/mobilecoinfoundation/sgx) and [MobileCoin's Oblivious RAM implementation](https://github.com/mobilecoinfoundation/mc-oblivious).
 
 ## Introduction
 
@@ -17,13 +22,13 @@ Let's suppose you have the following situation.
 * You have a mobile app, and Alice's client wants to pass a message to Bob's client.
 * Following with standard practices, Alice does not make a direct p2p connection
   to Bob, for a lot of reasons. Instead, Alice writes her message to a backend service
-  (which is sometimes called a "message broker")
+  (which is sometimes called a "message broker" or a "message bus")
   with a tag indicating that the message is intended for Bob.
 * Later, Bob is able to discover and download the message from the backend service.
   This way the message can be delivered asynchronously even if Alice and Bob do not have
   their apps open at the exact same time.
 
-However, you are concerned about **privacy** impacts of this arrangement. You, the service
+However, you are concerned about **privacy impact** of this arrangement. You, the service
 operator, can see when Alice is writing a message to Bob -- you likely can see Alice's
 IP when she reaches out, and she may have some kind of auth token that you use to ensure
 she's a real user and prevent DOS attacks, which identifies her when she makes a connection.
@@ -48,10 +53,10 @@ Moreover, the service attempts to resist active attacks which would allow the se
 goals. For instance,
 
 * Suppose Alice creates a message.
-* If the untrusted service operator then systematically dumps all messages from the broker, they can see what new
+* If the untrusted service operator then systematically dumps all messages from the bus, they can see what new
   message was created, because they can see what was there before and what was there after.
 * Suppose Bob receives the message and then deletes it.
-* If the untrusted service operator then systematically dumps all messages from the broker, they can see what
+* If the untrusted service operator then systematically dumps all messages from the bus, they can see what
   message was deleted.
 * The service operator infers that Alice sent a message to Bob.
 
@@ -67,10 +72,10 @@ The service generally attempts to be oblivious about:
 
 ### Limits
 
-The broker has a maximum capacity for messages which cannot be exceeded. This could be reasonably configured
+The bus has a maximum capacity for messages which cannot be exceeded. This could be reasonably configured
 to be close to the RAM limits of the machine.
 
-The broker also imposes a limit on how many messages can be in-flight destined for a particular user.
+The bus also imposes a limit on how many messages can be in-flight destined for a particular user.
 This limit is 62 at time of writing, and could be changed by adjusting compile-time constants, with some
 performance impact.
 
@@ -80,7 +85,7 @@ to rate limit how quickly users can create messages.
 
 ### Message expiry
 
-To ensure that messages leave the broker after some time, messages enter the broker's storage with an
+To ensure that messages leave the bus after some time, messages enter the broker's storage with an
 approximate timestamp, and when a certain expiry period has passed, they are deleted in
 the enclave. This expiry period is a command-line argument to the broker.
 
@@ -89,7 +94,7 @@ and not from any trusted service within the enclave. It is assumed that the node
 wants to provide the service and wants messages to expire after some time so that the storage is
 not eventually exhausted. We seek to establish a security property -- tampering with these timestamps
 does not enable the node operator to infer anything about sender / recipient linkage and undermine
-the privacy properties of the message broker.
+the privacy properties of the message bus.
 
 Note: In the MVP we didn't fully implement eviction of expired messages from the hashmap.
 
@@ -118,7 +123,7 @@ attestation with peers and replicate the messages to them. (In the MVP we do not
 
 This repo contains both a grpc service (in rust) and an enclave (in rust). You can build both with `cargo build`.
 
-Configuring and starting it should be relatively straightforward, see `./mc-bomb-server --help`.
+Configuring and starting it should be relatively straightforward, see `./grapevine-server --help`.
 
 You can study the example client to get started, or you can start by referring to the API docs below.
 
@@ -136,7 +141,7 @@ size to 2048 bytes and have a payload of almost 2kb)
 The `pub_key` fields are compressed ristretto curve points. (We could compile it to use ed25519 instead though.)
 
 The `timestamp` is an unsigned 64-bit integer number of seconds UTC since the unix epoch. Whatever you put here
-is ignored, and the broker provides it's own timestamps on messages.
+is ignored, and the bus provides it's own timestamps on messages.
 
 The `payload` is not interpreted by the broker, but the other fields are.
 
@@ -165,18 +170,18 @@ The broker allows you to perform CRUD operations:
   You specify a complete message, and if a matching id field is found, that message will be updated, and its timestamp
   updated. You must specify the recipient correctly also.
 * **Delete**: You must authenticate with the service by signing a challenge value with either the sender OR recipient key.
-  You can then specify id of the message that you wish to delete from the broker. You must also specify the recipient correctly,
+  You can then specify id of the message that you wish to delete from the bus. You must also specify the recipient correctly,
   this is required so that the enclave can obliviously delete it from their mailbox also in one operation indistinguishable from a read.
 
 To communicate with the broker, you need to use mobilecoin's standard method for creating attested connections to enclaves.
 
 1. First you will try to create an attested connection. On success, you will end up with an instance
 of `mc-noise` cipher which you can use to encrypt messages for the enclave.
-2. Then, look at the `client_request` API of the `mc-bomb-api` proto file. You will encrypt a `QueryRequest` object for the
+2. Then, look at the `client_request` API of the `grapevine-api` proto file. You will encrypt a `QueryRequest` object for the
    enclave, proudcing an `attest::Message` object which you will attach to that API. When you get a response, you can decrypt it
    using your cipher object, and then try to decode the `QueryResponse` object and interpret it.
 
-For more detailed info about `QueryRequest` and `QueryResponse`, see the `bomb.proto` file comments.
+For more detailed info about `QueryRequest` and `QueryResponse`, see the `grapevine.proto` file comments.
 
 ### Authentication
 
@@ -195,7 +200,7 @@ See the `mc-crypto-keys` crate for details about this signature scheme. You need
 
 ### HTTP interface?
 
-If you need an HTTP interface, it is recommended to use `go-grpc-gateway`, build it against the `bomb.proto`, and deploy it alongside this service.
+If you need an HTTP interface, it is recommended to use `go-grpc-gateway`, build it against the `grapevine.proto`, and deploy it alongside this service.
 
 ## Contributing
 
@@ -210,18 +215,18 @@ For more background on this, it's suggested that you can:
 Please join our [discord](https://discord.gg/mobilecoin) also, we are friendly!
 
 To build, you will need to do `git submodule init` first, and it is recommended to build within the docker container, which will set up many SGX libs for you.
-Start with `./mob prompt` and then `cargo build` should work from there.
+Start with `./mob prompt` and then `cargo build` should work from there. (Please see `BUILD.md` in `mobilecoinfoundation/mobilecoin.git` if you would prefer not to use docker.)
 
 You will need to sign our CLA before we can accept pull requests from you, please see `CLA.md`.
 
 [chat-image]: https://img.shields.io/discord/844353360348971068?style=flat-square
 [chat-link]: https://discord.gg/mobilecoin
 [license-image]: https://img.shields.io/badge/License-GNU%20GPL-blue
-[deps-image]: https://deps.rs/repo/github/mobilecoinfoundation/mc-bomb/status.svg?style=flat-square
-[deps-link]: https://deps.rs/repo/github/mobilecoinfoundation/mc-bomb
-[codecov-image]: https://img.shields.io/codecov/c/github/mobilecoinfoundation/mc-bomb/main?style=flat-square
-[codecov-link]: https://codecov.io/gh/mobilecoinfoundation/mc-bomb
-[gha-image]: https://img.shields.io/github/actions/workflow/status/mobilecoinfoundation/mc-bomb/ci.yaml?branch=main&style=flat-square
-[gha-link]: https://github.com/mobilecoinfoundation/mc-bomb/actions/workflows/ci.yaml?query=branch%3Amain
+[deps-image]: https://deps.rs/repo/github/mobilecoinofficial/grapevine/status.svg?style=flat-square
+[deps-link]: https://deps.rs/repo/github/mobilecoinofficial/grapevine
+[codecov-image]: https://img.shields.io/codecov/c/github/mobilecoinofficial/grapevine/main?style=flat-square
+[codecov-link]: https://codecov.io/gh/mobilecoinofficial/grapevine
+[gha-image]: https://img.shields.io/github/actions/workflow/status/mobilecoinofficial/grapevine/ci.yaml?branch=main&style=flat-square
+[gha-link]: https://github.com/mobilecoinofficial/grapevine/actions/workflows/ci.yaml?query=branch%3Amain
 [conduct-link]: CODE_OF_CONDUCT.md
 [conduct-image]: https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg?style=flat-square

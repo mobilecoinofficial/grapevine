@@ -1,6 +1,6 @@
 ---
 repository:
-  name: "mc-bomb"
+  name: "grapevine"
   description: "Prototype oblivious message broker"
   homepage: https://mobilecoin.foundation/
   topics: "cryptography, no-std"

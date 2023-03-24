@@ -1,5 +1,5 @@
 [package]
-name = "mc-bomb-types"
+name = "grapevine-types"
 version = "4.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
