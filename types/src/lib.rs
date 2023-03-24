@@ -10,7 +10,7 @@ use alloc::vec::Vec;
 use prost::Message;
 
 /// The signing context string used for signing and verifying challenges
-pub const MC_BOMB_CHALLENGE_SIGNING_CONTEXT: &[u8; 17] = b"mc-bomb-challenge";
+pub const GRAPEVINE_CHALLENGE_SIGNING_CONTEXT: &[u8; 19] = b"grapevine-challenge";
 
 /// The RequestType enum value for CREATE request
 pub const REQUEST_TYPE_CREATE: u32 = 1;
@@ -26,7 +26,7 @@ pub const REQUEST_TYPE_DELETE: u32 = 4;
 #[derive(Clone, Eq, PartialEq, Message)]
 pub struct QueryRequest {
     /// The request type of this message.
-    /// This corresponds to the enum RequestType in mc-bomb.proto.
+    /// This corresponds to the enum RequestType in grapevine.proto.
     ///
     /// 1 = CREATE
     /// 2 = READ
@@ -95,7 +95,7 @@ pub struct QueryResponse {
     pub record: Record,
 
     /// The status code which results from the response
-    /// This matches a nonzero value from the StatusCode enum in bomb.proto
+    /// This matches a nonzero value from the StatusCode enum in grapevine.proto
     #[prost(fixed32, tag = "2")]
     pub status_code: u32,
 }
