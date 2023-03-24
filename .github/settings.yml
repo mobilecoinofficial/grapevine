@@ -66,11 +66,19 @@ collaborators:
   - username: meowblecoinbot
     permission: triage
   - username: cbeck88
-    permission: maintain
+    permission: admin
   - username: jcape
+    permission: admin
+  - username: wjuan-mob
+    permission: maintain
+  - username: nick-mobilecoin
+    permission: maintain
+  - username: dorebell
     permission: maintain
 
 teams:
+  - name: coredev
+    permission: push
   - name: crypto-eng
     permission: push
 
@@ -81,17 +89,17 @@ branches:
       required_pull_request_reviews:
         require_code_owner_reviews: true
         required_approving_review_count: 1
-        require_last_push_approval: true
+        require_last_push_approval: false
       required_conversation_resolution: false
       required_status_checks:
         strict: false
         contexts:
           - lint
-          - deny
+          - deny (bans licenses sources)
           - sort
-          - clippy
-          - build
-          - test
+          - clippy (stable)
+          - build (nightly-2023-01-04)
+          - test (nightly-2023-01-04)
           - coverage
       enforce_admins: true
       required_linear_history: true

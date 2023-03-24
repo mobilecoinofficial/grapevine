@@ -1,6 +1,6 @@
 # These lines impact repository security
-/.github/CODEOWNERS        @cbeck88 @jcape
-/.github/settings.yml      @cbeck88 @jcape
+/.github/CODEOWNERS        @cbeck88 @jcape @wjuan-mob
+/.github/settings.yml      @cbeck88 @jcape @wjuan-mob
 
 # These lines prevent reviews of trivial changes blocking on particular users
 /.gitattributes
