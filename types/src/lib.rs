@@ -26,7 +26,7 @@ pub const REQUEST_TYPE_DELETE: u32 = 4;
 #[derive(Clone, Eq, PartialEq, Message)]
 pub struct QueryRequest {
     /// The request type of this message.
-    /// This corresponds to the enum RequestType in mc-omb.proto.
+    /// This corresponds to the enum RequestType in mc-bomb.proto.
     ///
     /// 1 = CREATE
     /// 2 = READ
