@@ -27,7 +27,10 @@ jobs:
       - uses: xt0rted/markdownlint-problem-matcher@v2
       - uses: DavidAnson/markdownlint-cli2-action@v9
         with:
-          globs: "**/*.md" "!mobilecoin/**" "!CLA.md" "!.github/pull_request_template.md"
+          globs: |
+          **/*.md"
+          !mobilecoin/**
+          !.github/pull_request_template.md
       # FIXME: Add yamllint problem matcher
       - run: yamllint -s .
 
