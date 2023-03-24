@@ -13,6 +13,7 @@ env:
 jobs:
   # TODO: Fix automatically
   lint:
+    runs-on: [self-hosted, Linux, large]
     container: mobilecoin/builder-install:v0.0.25
     steps:
       - uses: actions/checkout@v3
@@ -31,7 +32,7 @@ jobs:
       - run: yamllint -s .
 
   crev:
-    container: mobilecoin/builder-install:v0.0.25
+    runs-on: ubuntu-22.04
     needs:
       - lint
     # TODO: once we have enough reviews, make this a required check
@@ -115,7 +116,7 @@ jobs:
           # yamllint enable rule:line-length
 
   deny:
-    container: mobilecoin/builder-install:v0.0.25
+    runs-on: ubuntu-22.04
     needs:
       - lint
     strategy:
@@ -134,7 +135,7 @@ jobs:
           command: check ${{ matrix.checks }}
 
   sort:
-    container: mobilecoin/builder-install:v0.0.25
+    runs-on: ubuntu-22.04
     needs:
       - lint
     steps:
@@ -149,14 +150,13 @@ jobs:
       # TODO: Fix automatically
 
   clippy:
-    container: mobilecoin/builder-install:v0.0.25
+    runs-on: ubuntu-22.04
     needs:
       - lint
     strategy:
       matrix:
         rust:
-          - stable
-          - beta
+          - nightly-2023-01-04
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
@@ -172,6 +172,7 @@ jobs:
       # TODO: Fix automatically, or post GH-suggestions comments
 
   build:
+    runs-on: [self-hosted, Linux, large]
     container: mobilecoin/builder-install:v0.0.25
     needs:
       - lint
@@ -190,7 +191,8 @@ jobs:
       - run: cargo +${{ matrix.rust }} build --release
 
   test:
-    runs-on: ubuntu-22.04
+    runs-on: [self-hosted, Linux, large]
+    container: mobilecoin/builder-install:v0.0.25
     needs:
       - lint
     strategy:
@@ -208,16 +210,14 @@ jobs:
       - run: cargo +${{ matrix.rust }} test --release
 
   doc:
+    runs-on: ubuntu-22.04
     container: mobilecoin/builder-install:v0.0.25
     needs:
       - lint
     strategy:
       matrix:
         rust:
-          - stable
-          - beta
-    # Prevent beta docs warnings from causing CI failure
-    continue-on-error: ${{ matrix.rust == 'beta' }}
+          - nightly-2023-01-04
     steps:
       - uses: actions/checkout@v3
         with:
@@ -229,6 +229,7 @@ jobs:
       - run: cargo +${{ matrix.rust }} doc --release --no-deps
 
   coverage:
+    runs-on: [self-hosted, Linux, large]
     container: mobilecoin/builder-install:v0.0.25
     needs:
       - lint
