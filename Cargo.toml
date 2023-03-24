@@ -1,0 +1,63 @@
+[workspace]
+members = [
+    "types",
+]
+exclude = [
+    "enclave/trusted",
+]
+
+[workspace.package]
+rust-version = "1.68.0"
+
+[profile.dev]
+opt-level = 0
+rpath = true
+
+[profile.release]
+opt-level = 3
+rpath = false
+lto = "thin"
+debug-assertions = false
+overflow-checks = false
+
+# Skip the need for LD_LIBRARY_PATH in `cargo test`
+[profile.test]
+rpath = true
+
+[workspace.metadata.release]
+shared-version = true
+dev-version-ext = "beta.0"
+consolidate-commits = true
+consolidate-pushes = true
+tag-name = "v{{version}}"
+
+# The file names in this key are relative to the each crate that gets released.
+# So we only need one `README.md` entry if all the README's follow a
+# common format and are always next to the Cargo.toml for their respective
+# package.
+pre-release-replacements = [
+    {file="README.md", search="mc-[a-z-]+/[0-9.]+", replace="{{crate_name}}/{{version}}"},
+]
+
+[patch.crates-io]
+# Fork and rename to use "OG" dalek-cryptography with latest dependencies.
+bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "65f8af4ca0bc1cb2fd2148c3259a0a76b155ff3e" }
+
+# Fix issues with recent nightlies, bump curve25519-dalek version
+curve25519-dalek = { git = "https://github.com/mobilecoinfoundation/curve25519-dalek.git", rev = "8791722e0273762552c9a056eaccb7df6baf44d7" }
+ed25519-dalek = { git = "https://github.com/mobilecoinfoundation/ed25519-dalek.git", rev = "4194e36abc75722e6fba7d552e719448fc38c51f" }
+
+# mbedtls patched to allow certificate verification with a profile
+mbedtls = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "98d3af413c1e23ea89cc5f41ab4dddb1944405af" }
+mbedtls-sys-auto = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "98d3af413c1e23ea89cc5f41ab4dddb1944405af" }
+
+# Fork and rename to use "OG" dalek-cryptography.
+schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel.git", rev = "5c98ae068ee4652d6df6463b549fbf2d5d132faa" }
+
+# Fixes the following:
+# * Allow enabling `serde/std` without also requiring `serde_cbor/std` to be enabled.
+#   See: https://github.com/pyfisch/cbor/pull/198
+serde_cbor = { git = "https://github.com/mobilecoinofficial/cbor", rev = "4c886a7c1d523aae1ec4aa7386f402cb2f4341b5" }
+
+# Fix issues with recent nightlies, bump curve25519-dalek version
+x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git", rev = "c1966b8743d320cd07a54191475e5c0f94b2ea30" }

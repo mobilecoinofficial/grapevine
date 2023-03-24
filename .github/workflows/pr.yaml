@@ -1,0 +1,30 @@
+---
+name: pr
+
+"on":
+  pull_request:
+
+jobs:
+  update-metadata:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: pascalgn/size-label-action@v0.4.3
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          IGNORED: "Cargo.lock"
+          INPUT_SIZES: >
+            {
+              "0": "XS",
+              "30": "S",
+              "250": "M",
+              "500": "L",
+              "1000": "XL",
+              "2000": "XXL",
+              "5000": "OHLAWDHECOMIN"
+            }
+      - uses: actions/labeler@v4
+        with:
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"

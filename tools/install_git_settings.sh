@@ -1,0 +1,1 @@
+../mobilecoin/tools/install_git_settings.sh

@@ -1,5 +1,11 @@
-MobileCoin Basic Oblivious Message Broker
-=========================================
+# MobileCoin Basic Oblivious Message Broker
+
+[![Project Chat][chat-image]][chat-link]<!--
+-->![License][license-image]<!--
+-->[![Dependency Status][deps-image]][deps-link]<!--
+-->[![CodeCov Status][codecov-image]][codecov-link]<!--
+-->[![GitHub Workflow Status][gha-image]][gha-link]<!--
+-->[![Contributor Covenant][conduct-image]][conduct-link]
 
 This is a prototype oblivious message broker, which allows posting messages for
 a recipient, and searching for messages, using a CRUD API.
@@ -15,7 +21,7 @@ Let's suppose you have the following situation.
   This way the message can be delivered asynchronously even if Alice and Bob do not have
   their apps open at the exact same time.
 
-However, you are concerned about privacy impacts of this arrangement. You, the service
+However, you are concerned about **privacy** impacts of this arrangement. You, the service
 operator, can see when Alice is writing a message to Bob -- you likely can see Alice's
 IP when she reaches out, and she may have some kind of auth token that you use to ensure
 she's a real user and prevent DOS attacks, which identifies her when she makes a connection.
@@ -29,11 +35,12 @@ The service implemented here can be used as part of a solution to try to resolve
 * The pending messages are stored in SGX encrypted memory and not in a "transparent" message bus or db.
 * When Alice writes a message to the oblivious broker, you (the service operator) cannot see what
   she wrote, because it is sent over an encrypted, attested channel, and it doesn't leave the encrypted memory.
-* You also cannot dump the entire message set. The broker will only give you Bob's messages
-  if you can sign a challenge with Bob's private key.
 * When Bob searches for a message or messages, you don't know for sure if he found anything, or
   which exact encrypted messages he downloaded. This prevents you from "following the bytes" and connecting
   the message from Alice to Bob.
+
+The service here is based on the same high-performance Oblivious RAM implementation that powers MobileCoin Fog.
+See the [mobilecoinfoundation/mc-oblivious](https://github.com/mobilecoinfoundation/mc-oblivious) repository for more detail on that.
 
 Moreover, the service attempts to resist active attacks which would allow the service operator to undermine these
 goals. For instance,
@@ -56,8 +63,7 @@ The service generally attempts to be oblivious about:
 * If a message was read, updated, or deleted, which is the case, and avoid revealing anything about the message or
   the success or failure of these operations (except in API-misuse scenarios).
 
-Limits
-------
+## Limits
 
 The broker has a maximum capacity for messages which cannot be exceeded. This could be reasonably configured
 to be close to the RAM limits of the machine.
@@ -70,8 +76,7 @@ Currently, in the use-cases that we envision, sending someone more than 62 concu
 We expect that ultimately users will have to provide an auth token to talk to this service at all, and this can be a vehicle
 to rate limit how quickly users can create messages.
 
-Message expiry
---------------
+## Message expiry
 
 To ensure that messages leave the broker after some time, messages enter the broker's storage with an
 approximate timestamp, and when a certain expiry period has passed, they are deleted in
@@ -86,8 +91,7 @@ the privacy properties of the message broker.
 
 Note: In the MVP we didn't fully implement eviction of expired messages from the hashmap.
 
-Durable messages
-----------------
+## Durable messages
 
 In some applications, it might be desired that Alice and Bob can always recover their historical
 messages that they sent and received. It is recommended that they do this by writing encrypted
@@ -103,14 +107,12 @@ If you think you need oblivious kafka for your use-case,
 you probably actually need an adapted version of MobileCoin Fog (fog-ingest and fog-view working together)
 and not this service.
 
-High availability
------------------
+## High availability
 
 For high availability, the right thing is likely that the message broker should be able to perform node-to-node
 attestation with peers and replicate the messages to them. (In the MVP we do not plan to do this, however.)
 
-Overview
-========
+# Overview
 
 This repo contains both a grpc service (in rust) and an enclave (in rust). You can build both with `cargo build`.
 
@@ -118,24 +120,25 @@ Configuring and starting it should be relatively straightforward, see `./mc-bomb
 
 You can study the example client to get started, or you can start by referring to the API docs below.
 
-Message
--------
+## Message
 
 Each messsage is conceptually 1024 bytes with the following layout:
 
-|----------|--------------- | ----------------- | --------- | --------- |
-| id       | sender_pub_key | recipient_pub_key | timestamp | payload   |
-| 16 bytes | 32 bytes       | 32 bytes          | 16 bytes  | 936 bytes |
-|----------|--------------- | ----------------- | --------- | --------- |
+| id       | sender_pub_key | recipient_pub_key | timestamp | payload   | total      |
+|----------|--------------- | ----------------- | --------- | --------- | =========  |
+| 16 bytes | 32 bytes       | 32 bytes          | 8 bytes   | 936 bytes | 1024 bytes |
 
 (Alternative configuration is possible at compile-time, for example, we could increase message
 size to 2048 bytes and have a payload of almost 2kb)
 
-The pubkey fields are compressed ristretto curve points. (We could compile it to use ed25519 instead though.)
+The `pub_key` fields are compressed ristretto curve points. (We could compile it to use ed25519 instead though.)
 
-The timestamp is an unsigned 64-bit integer number of seconds UTC since the unix epoch.
+The `timestamp` is an unsigned 64-bit integer number of seconds UTC since the unix epoch. Whatever you put here
+is ignored, and the broker provides it's own timestamps on messages.
 
-The payload is not interpreted by the broker, but the other fields are. You must provide excatly e.g. 936 bytes in 1024 byte mode.
+The `payload` is not interpreted by the broker, but the other fields are.
+
+You must provide excatly e.g. 936 bytes in 1024 byte mode.
 This is required in order for the broker to establish its security goals.
 
 We suggest that you should read and write "framed protobuf" to the payload field. The first 2 bytes can indicate
@@ -148,20 +151,20 @@ we allow clients to decide the semantics and make this implementation able to se
 The id bytes are any 16 bytes of your choosing, except all zeroes. It is suggested that they can be random.
 An all-zeroes value is not a valid id.
 
-API
----
+# API
 
 The broker allows you to perform CRUD operations:
 
-* Create: You may upload a message. The timestamp you specify is ignored, the broker assigns a timestamp.
+* **Create**: You may upload a message. The timestamp you specify is ignored, the broker assigns a timestamp.
   You must authenticate with the service by signing a challenge value with the sender key (more on this below).
-* Read: You must authenticate with the service by signing a challenge value with the recipient key (more on this below).
+* **Read**: You must authenticate with the service by signing a challenge value with the recipient key (more on this below).
   You can either request specific IDs that you wish to read, or request the service to give you all ID's associated to you.
-* Update: You must authenticate with the service by signing a challenge value with the sender or recipient key.
+* **Update**: You must authenticate with the service by signing a challenge value with the sender or recipient key.
   You specify a complete message, and if a matching id field is found, that message will be updated, and its timestamp
-  updated.
-* Delete: You must authenticate with the service by signing a challenge value with either the sender OR recipient key.
-  You can then specify id of the message that you wish to delete from the broker.
+  updated. You must specify the recipient correctly also.
+* **Delete**: You must authenticate with the service by signing a challenge value with either the sender OR recipient key.
+  You can then specify id of the message that you wish to delete from the broker. You must also specify the recipient correctly,
+  this is required so that the enclave can obliviously delete it from their mailbox also in one operation indistinguishable from a read.
 
 To communicate with the broker, you need to use mobilecoin's standard method for creating attested connections to enclaves.
 
@@ -173,8 +176,7 @@ of `mc-noise` cipher which you can use to encrypt messages for the enclave.
    
 For more detailed info about `QueryRequest` and `QueryResponse`, see the `bomb.proto` file comments.
 
-Authentication
---------------
+## Authentication
 
 The idea when authenticating with the broker is:
 
@@ -189,7 +191,30 @@ See the example client for more details about this.
 
 See the `mc-crypto-keys` crate for details about this signature scheme. You need to call the `sign_schnorrkel` function on `RistrettoPrivate` (or some wrapper of this).
 
-HTTP interface?
----------------
+## HTTP interface?
 
 If you need an HTTP interface, it is recommended to use `go-grpc-gateway`, build it against the `bomb.proto`, and deploy it alongside this service.
+
+# Contributing
+
+For more background on this, it's recommended that you checkout [mobilecoin fog](https://github.com/mobilecoinfoundation/mobilecoin/tree/master/fog) and
+the [fog threat model](https://github.com/mobilecoinfoundation/mobilecoin/tree/master/fog-threat-model-2.1.0.md).
+
+Please join our discord also, we are friendly!
+
+To build, you will need to do `git submodule init` first, and it is recommended to build within the docker container, which will set up many SGX libs for you.
+Start with `./mob prompt` and then `cargo build` should work from there.
+
+You will need to sign our CLA before we can accept pull requests from you, please see `CLA.md`.
+
+[chat-image]: https://img.shields.io/discord/844353360348971068?style=flat-square
+[chat-link]: https://discord.gg/mobilecoin
+[license-image]: https://img.shields.io/badge/License-GNU%20GPL-blue
+[deps-image]: https://deps.rs/repo/github/mobilecoinfoundation/mc-bomb/status.svg?style=flat-square
+[deps-link]: https://deps.rs/repo/github/mobilecoinfoundation/mc-bomb
+[codecov-image]: https://img.shields.io/codecov/c/github/mobilecoinfoundation/mc-bomb/main?style=flat-square
+[codecov-link]: https://codecov.io/gh/mobilecoinfoundation/mc-bomb
+[gha-image]: https://img.shields.io/github/actions/workflow/status/mobilecoinfoundation/mc-bomb/ci.yaml?branch=main&style=flat-square
+[gha-link]: https://github.com/mobilecoinfoundation/mc-bomb/actions/workflows/ci.yaml?query=branch%3Amain
+[conduct-link]: CODE_OF_CONDUCT.md
+[conduct-image]: https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg?style=flat-square
