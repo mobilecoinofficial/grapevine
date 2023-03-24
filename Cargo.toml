@@ -4,6 +4,7 @@ members = [
 ]
 exclude = [
     "enclave/trusted",
+    "mobilecoin",
 ]
 
 [workspace.package]

@@ -8,7 +8,7 @@ rust-version = { workspace = true }
 
 [dependencies]
 # mobilecoin
-mc-crypto-keys = { path = "../mobilecoin/crypto/keys", default-features = false }
+mc-crypto-keys = { path = "../mobilecoin/crypto/keys" }
 
 # third-party
 displaydoc = { version = "0.2", default-features = false }
