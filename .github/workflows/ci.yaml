@@ -126,8 +126,6 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
-        with:
-          submodules: true
       - uses: dtolnay/rust-toolchain@stable
       - uses: EmbarkStudios/cargo-deny-action@v1
         with:
@@ -139,8 +137,6 @@ jobs:
       - lint
     steps:
       - uses: actions/checkout@v3
-        with:
-          submodules: true
       - uses: dtolnay/rust-toolchain@stable
       - uses: taiki-e/install-action@v2
         with:
