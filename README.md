@@ -53,10 +53,10 @@ Moreover, the service attempts to resist active attacks which would allow the se
 goals. For instance,
 
 * Suppose Alice creates a message.
-* If the untrusted service operator then systematically dumps all messages from the bus, they can see what new
+* If the untrusted service operator then systematically dumps all messages (or message id's) from the bus, they can see what new
   message was created, because they can see what was there before and what was there after.
 * Suppose Bob receives the message and then deletes it.
-* If the untrusted service operator then systematically dumps all messages from the bus, they can see what
+* If the untrusted service operator then systematically dumps all messages (or message id's) from the bus, they can see what
   message was deleted.
 * The service operator infers that Alice sent a message to Bob.
 
@@ -112,7 +112,7 @@ Think of this as closer to "oblivious redis" than "oblivious kafka".
 
 If you think you need oblivious kafka for your use-case,
 you probably actually need an adapted version of MobileCoin Fog (fog-ingest and fog-view working together)
-and not this service.
+and not this service. (Or, you may be able to put data in the memo field of a `TxOut`.)
 
 ### High availability
 
@@ -150,6 +150,7 @@ This is required in order for the broker to establish its security goals.
 
 We suggest that you should read and write "framed protobuf" to the payload field. The first 2 bytes can indicate
 how many of the 934 remaining bytes are data, and the rest can be the protobuf bytes, followed by zeroes.
+(However, you can use whatever format you want, the service really doesn't care.)
 
 Note: This raw-bytes payload is not as nice as many web-service APIs, which typically assign semantics to all parts of their requests
 and not just treat things as dumb bytes. But, a fixed size in bytes is needed for ORAM to work. By allowing the API to be dumb bytes,
@@ -177,7 +178,7 @@ To communicate with the broker, you need to use mobilecoin's standard method for
 
 1. First you will try to create an attested connection. On success, you will end up with an instance
 of `mc-noise` cipher which you can use to encrypt messages for the enclave.
-2. Then, look at the `client_request` API of the `grapevine-api` proto file. You will encrypt a `QueryRequest` object for the
+2. Then, look at the `client_request` API of the `mc-grapevine-api` proto file. You will encrypt a `QueryRequest` object for the
    enclave, proudcing an `attest::Message` object which you will attach to that API. When you get a response, you can decrypt it
    using your cipher object, and then try to decode the `QueryResponse` object and interpret it.
 
@@ -211,6 +212,8 @@ For more background on this, it's suggested that you can:
 * Read the [fog threat model](https://github.com/mobilecoinfoundation/mobilecoin/tree/master/fog-threat-model-2.1.0.md).
 * Read references and citations in [mobilecoinfoundation/mc-oblivious](https://github.com/mobilecoinfoundation/mc-oblivious), or check out the sources
 * Read the [fog whitepaper](https://mobilecoin.com/learn/read-the-whitepapers/mobilecoin-fog/)
+
+You can also check out an older project with related goals called [pond](https://github.com/agl/pond/blob/master/doc/tech.html).
 
 Please join our [discord](https://discord.gg/mobilecoin) also, we are friendly!
 
