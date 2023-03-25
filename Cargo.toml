@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "types",
+    "uri",
 ]
 exclude = [
     "enclave/trusted",
