@@ -52,10 +52,29 @@ pub struct QueryRequest {
     pub auth_signature: Vec<u8>,
 
     /// The record associated to this request.
-    /// In all cases this must be a fully populated fized-size Record to ensure
-    /// constant size on the wire.
+    /// In all cases this must be a fully populated fized-size RequestRecord
+    /// to ensure constant size on the wire.
     #[prost(message, required, tag = "4")]
-    pub record: Record,
+    pub record: RequestRecord,
+}
+
+/// The parts of a record that appear in a request
+#[derive(Clone, Eq, PartialEq, Message)]
+pub struct RequestRecord {
+    /// The id number of this message. Must be exactly 16 bytes, typically
+    /// random. All zeroes is an invalid key and typically is used to mean
+    /// "show me my next message" in the API, which will have a different ID
+    /// from all zeroes.
+    #[prost(bytes, tag = "1")]
+    pub msg_id: Vec<u8>,
+
+    /// The recipient of this message. Must be a 32 byte ristretto public key.
+    #[prost(bytes, tag = "2")]
+    pub recipient: Vec<u8>,
+
+    /// The (opaque) payload of this message. This is a fixed number of bytes.
+    #[prost(bytes, tag = "3")]
+    pub payload: Vec<u8>,
 }
 
 /// A record (alternatively, a "message") in the message bus
@@ -104,16 +123,16 @@ pub struct QueryResponse {
 pub const STATUS_CODE_SUCCESS: u32 = 1;
 /// No matching record was found
 pub const STATUS_CODE_NOT_FOUND: u32 = 2;
-/// No matching record was found
+/// This message id is already in use, so we cannot create the new message
 pub const STATUS_CODE_MESSAGE_ID_ALREADY_IN_USE: u32 = 3;
 /// The message id is invalid in this context. (All zeroes has special meaning.)
 pub const STATUS_CODE_INVALID_MESSAGE_ID: u32 = 4;
 /// The recipient id is invalid.
 pub const STATUS_CODE_INVALID_RECIPIENT: u32 = 5;
-/// There are too many in-flight messages for this user.
-pub const STATUS_CODE_TOO_MANY_MESSAGES_FOR_USER: u32 = 6;
-/// There are too many users, we are close to capacity.
-pub const STATUS_CODE_TOO_MANY_USERS: u32 = 7;
+/// There are too many in-flight messages for this recipient.
+pub const STATUS_CODE_TOO_MANY_MESSAGES_FOR_RECIPIENT: u32 = 6;
+/// There are too many recipients with in-flight messages
+pub const STATUS_CODE_TOO_MANY_RECIPIENTS: u32 = 7;
 /// There are too many messages in flight, we are close to capacity.
 pub const STATUS_CODE_TOO_MANY_MESSAGES: u32 = 8;
 /// An internal error has occurred.
