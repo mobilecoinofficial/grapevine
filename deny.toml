@@ -8,10 +8,19 @@ unmaintained = "deny"
 unsound = "deny"
 yanked = "deny"
 notice = "warn"
-ignore = []
+ignore = [
+    # time has a security vulnerability, but it isn't interesting to us
+    "RUSTSEC-2020-0071",
+    # failure crate has a bug and is unmaintained, but we are only using it
+    # via build dependencies
+    "RUSTSEC-2020-0036",
+    "RUSTSEC-2019-0036",
+]
 
 [licenses]
-unlicensed = "deny"
+# This was changed to warn to work around mbedtls and mbedtls-sys-auto issues
+# See https://github.com/EmbarkStudios/cargo-deny/issues/498
+unlicensed = "warn"
 allow = [
     "Apache-2.0",
     "Apache-2.0 WITH LLVM-exception",
@@ -27,7 +36,21 @@ copyleft = "allow"
 allow-osi-fsf-free = "both"
 default = "deny"
 confidence-threshold = 0.8
-exceptions = []
+
+[[licenses.clarify]]
+name = "mc-sgx-types"
+expression = "Apache-2.0"
+license-files = [
+    { path = "LICENSE", hash = 0xb433aff8 }
+]
+
+
+[[licenses.clarify]]
+name = "rs-libc"
+expression = "MIT"
+license-files = [
+    { path = "LICENSE", hash = 0x7933df3c }
+]
 
 [bans]
 multiple-versions = "warn"

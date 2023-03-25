@@ -12,6 +12,8 @@ env:
   # We are on an old nightly so we can't use sparse,
   # remove this when we get past 2023-03-23 nightly
   CARGO_REGISTRIES_CRATES_IO_PROTOCOL: "git"
+  SGX_MODE: "SW"
+  IAS_MODE: "DEV"
 
 jobs:
   # TODO: Fix automatically
