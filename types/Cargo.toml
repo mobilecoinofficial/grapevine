@@ -6,9 +6,13 @@ edition = "2021"
 license = "GPL-3.0"
 rust-version = { workspace = true }
 
+[features]
+default = []
+from-random = ["dep:mc-util-from-random"]
+
 [dependencies]
 # mobilecoin
-mc-crypto-keys = { path = "../mobilecoin/crypto/keys" }
+mc-util-from-random = { path = "../mobilecoin/util/from-random", optional = true }
 
 # third-party
 displaydoc = { version = "0.2", default-features = false }

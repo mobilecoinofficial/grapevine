@@ -137,3 +137,52 @@ pub const STATUS_CODE_TOO_MANY_RECIPIENTS: u32 = 7;
 pub const STATUS_CODE_TOO_MANY_MESSAGES: u32 = 8;
 /// An internal error has occurred.
 pub const STATUS_CODE_INTERNAL_ERROR: u32 = 9;
+
+// This is used by some test code
+#[cfg(feature = "from-random")]
+mod from_random {
+    use super::*;
+    use mc_util_from_random::{CryptoRng, FromRandom, RngCore};
+
+    impl FromRandom for RequestRecord {
+        fn from_random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
+            Self {
+                msg_id: <[u8; 16]>::from_random(rng).to_vec(),
+                recipient: <[u8; 32]>::from_random(rng).to_vec(),
+                payload: <[u8; 936]>::from_random(rng).to_vec(),
+            }
+        }
+    }
+
+    impl FromRandom for Record {
+        fn from_random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
+            Self {
+                msg_id: <[u8; 16]>::from_random(rng).to_vec(),
+                sender: <[u8; 32]>::from_random(rng).to_vec(),
+                recipient: <[u8; 32]>::from_random(rng).to_vec(),
+                timestamp: rng.next_u64(),
+                payload: <[u8; 936]>::from_random(rng).to_vec(),
+            }
+        }
+    }
+
+    impl FromRandom for QueryRequest {
+        fn from_random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
+            Self {
+                request_type: (rng.next_u32() % 4) + 1,
+                auth_identity: <[u8; 32]>::from_random(rng).to_vec(),
+                auth_signature: <[u8; 64]>::from_random(rng).to_vec(),
+                record: RequestRecord::from_random(rng),
+            }
+        }
+    }
+
+    impl FromRandom for QueryResponse {
+        fn from_random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
+            Self {
+                record: Record::from_random(rng),
+                status_code: (rng.next_u32() % 9) + 1,
+            }
+        }
+    }
+}

@@ -5,14 +5,15 @@
 
 use mc_grapevine_api::grapevine;
 use mc_serial::{encode, round_trip_message};
-use mc_util_test_helper::{get_seeded_rng, run_with_several_seeds, CryptoRng, RngCore};
+use mc_util_from_random::FromRandom;
+use mc_util_test_helper::{get_seeded_rng, run_with_several_seeds};
 
 /// Test that many random instances of prosty QueryRequest round trip with
 /// protobufy QueryRequest
 #[test]
 fn grapevine_query_request_round_trip() {
     run_with_several_seeds(|mut rng| {
-        let test_val = mc_grapevine_types::QueryRequest::sample(&mut rng);
+        let test_val: mc_grapevine_types::QueryRequest = FromRandom::from_random(&mut rng);
         round_trip_message::<mc_grapevine_types::QueryRequest, grapevine::QueryRequest>(&test_val);
     });
 }
@@ -21,10 +22,10 @@ fn grapevine_query_request_round_trip() {
 #[test]
 fn grapevine_query_request_constant_size() {
     let mut rng = get_seeded_rng();
-    let test_val = mc_grapevine_types::QueryRequest::sample(&mut rng);
+    let test_val = mc_grapevine_types::QueryRequest::from_random(&mut rng);
     let expected_size = encode(&test_val).len();
     run_with_several_seeds(|mut rng| {
-        let test_val = mc_grapevine_types::QueryRequest::sample(&mut rng);
+        let test_val = mc_grapevine_types::QueryRequest::from_random(&mut rng);
         assert_eq!(encode(&test_val).len(), expected_size);
     });
 }
@@ -34,7 +35,7 @@ fn grapevine_query_request_constant_size() {
 #[test]
 fn grapevine_query_response_round_trip() {
     run_with_several_seeds(|mut rng| {
-        let test_val = mc_grapevine_types::QueryResponse::sample(&mut rng);
+        let test_val = mc_grapevine_types::QueryResponse::from_random(&mut rng);
         round_trip_message::<mc_grapevine_types::QueryResponse, grapevine::QueryResponse>(
             &test_val,
         );
@@ -45,10 +46,10 @@ fn grapevine_query_response_round_trip() {
 #[test]
 fn grapevine_query_response_constant_size() {
     let mut rng = get_seeded_rng();
-    let test_val = mc_grapevine_types::QueryResponse::sample(&mut rng);
+    let test_val = mc_grapevine_types::QueryResponse::from_random(&mut rng);
     let expected_size = encode(&test_val).len();
     run_with_several_seeds(|mut rng| {
-        let test_val = mc_grapevine_types::QueryResponse::sample(&mut rng);
+        let test_val = mc_grapevine_types::QueryResponse::from_random(&mut rng);
         assert_eq!(encode(&test_val).len(), expected_size);
     });
 }
@@ -113,89 +114,4 @@ fn test_request_type_enum_values() {
         mc_grapevine_types::REQUEST_TYPE_DELETE,
         grapevine::RequestType::DELETE as u32
     );
-}
-
-/// These sampling functions are used specifically for these tests, for
-/// generating random proto instances to try to round trip.
-/// They should not be shipped to production or to customers as part of
-/// libmobilecoin They are not done using the mc_crypto_keys::FromRandom trait
-/// because we don't need to ship them, and not all of these sampling
-/// distributions e.g. MaskedAmount::from_random really make sense for any other
-/// use-case, we are just generating fuzz data basically.
-trait Sample {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self;
-}
-
-impl Sample for [u8; 16] {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
-        let mut result = [0u8; 16];
-        rng.fill_bytes(&mut result);
-        result
-    }
-}
-
-impl Sample for [u8; 32] {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
-        let mut result = [0u8; 32];
-        rng.fill_bytes(&mut result);
-        result
-    }
-}
-
-impl Sample for [u8; 64] {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
-        let mut result = [0u8; 64];
-        rng.fill_bytes(&mut result);
-        result
-    }
-}
-
-impl Sample for [u8; 936] {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
-        let mut result = [0u8; 936];
-        rng.fill_bytes(&mut result);
-        result
-    }
-}
-
-impl Sample for mc_grapevine_types::RequestRecord {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
-        mc_grapevine_types::RequestRecord {
-            msg_id: <[u8; 16]>::sample(rng).to_vec(),
-            recipient: <[u8; 32]>::sample(rng).to_vec(),
-            payload: <[u8; 936]>::sample(rng).to_vec(),
-        }
-    }
-}
-
-impl Sample for mc_grapevine_types::Record {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
-        mc_grapevine_types::Record {
-            msg_id: <[u8; 16]>::sample(rng).to_vec(),
-            sender: <[u8; 32]>::sample(rng).to_vec(),
-            recipient: <[u8; 32]>::sample(rng).to_vec(),
-            timestamp: rng.next_u64(),
-            payload: <[u8; 936]>::sample(rng).to_vec(),
-        }
-    }
-}
-
-impl Sample for mc_grapevine_types::QueryRequest {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
-        mc_grapevine_types::QueryRequest {
-            request_type: rng.next_u32(),
-            auth_identity: <[u8; 32]>::sample(rng).to_vec(),
-            auth_signature: <[u8; 64]>::sample(rng).to_vec(),
-            record: mc_grapevine_types::RequestRecord::sample(rng),
-        }
-    }
-}
-
-impl Sample for mc_grapevine_types::QueryResponse {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
-        mc_grapevine_types::QueryResponse {
-            record: mc_grapevine_types::Record::sample(rng),
-            status_code: rng.next_u32(),
-        }
-    }
 }

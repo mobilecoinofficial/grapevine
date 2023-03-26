@@ -18,6 +18,7 @@ mc-attest-api = { path = "../mobilecoin/attest/api" }
 mc-grapevine-types = { path = "../types" }
 
 [dev-dependencies]
+mc-grapevine-types = { path = "../types", features = ["from-random"] }
 mc-serial = { git = "https://github.com/mobilecoinfoundation/serial", rev = "40d820f363bbcf6b1ea98676220698c14c977b63", features = ["test_utils"] }
 mc-util-from-random = { path = "../mobilecoin/util/from-random" }
 mc-util-test-helper = { path = "../mobilecoin/util/test-helper" }

@@ -1486,7 +1486,7 @@ name = "mc-grapevine-types"
 version = "4.0.2"
 dependencies = [
  "displaydoc",
- "mc-crypto-keys",
+ "mc-util-from-random",
  "mc-util-serial",
  "prost",
 ]
