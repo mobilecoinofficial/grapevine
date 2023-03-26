@@ -149,7 +149,8 @@ jobs:
       # TODO: Fix automatically
 
   clippy:
-    runs-on: ubuntu-22.04
+    runs-on: [self-hosted, Linux, large]
+    container: mobilecoin/builder-install:v0.0.25
     needs:
       - lint
     strategy:
