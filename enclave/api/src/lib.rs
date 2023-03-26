@@ -4,6 +4,7 @@
 #![deny(missing_docs)]
 #![doc = include_str!("../README.md")]
 #![allow(clippy::result_large_err)]
+#![allow(clippy::large-enum-variant)]
 
 extern crate alloc;
 
