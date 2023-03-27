@@ -106,15 +106,12 @@ impl MarshalledRecord for A8Bytes<MessageBusValueSize> {
     }
 
     fn to_proto(&self, msg_id: &MsgId) -> Record {
-        // 72 = 32 + 32 + 8
-        let (_, payload): (&A8Bytes<U72>, _) = (&self).split();
-
         Record {
             msg_id: msg_id.as_slice().to_vec(),
             sender: self.get_sender().as_slice().to_vec(),
             recipient: self.get_recipient().as_slice().to_vec(),
             timestamp: *self.get_timestamp(),
-            payload: payload.as_slice().to_vec(),
+            payload: self.get_payload().as_slice().to_vec(),
         }
     }
 

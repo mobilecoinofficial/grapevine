@@ -181,7 +181,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> MessageBus<OSC> 
         // value, fail hard and fast, because this breaks security.
         // Otherwise, I believe that unknown request types will be interpretted as READ
         if bool::from(query.request_type.ct_eq(&0)) {
-            return Err(QueryError::InvalidRequestType.into());
+            return Err(QueryError::InvalidRequestType);
         }
 
         // Call the appropriate helper
@@ -215,7 +215,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> MessageBus<OSC> 
         let mut insertion_succeeds = Choice::from(0);
         let mut message_omap_result_code = 0u32;
         let recipient_omap_result_code = self.recipients_to_ids.access_and_insert(
-            &marshalled.get_recipient(),
+            marshalled.get_recipient(),
             &Default::default(),
             &mut rng,
             |_code, buffer| {
@@ -237,10 +237,9 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> MessageBus<OSC> 
                     let msg_id_is_key = msg_id.ct_eq(&id);
 
                     // The space is vacant if its id is all zeroes, or the timestamp is expired
-                    found_free_space = found_free_space | (msg_id_is_zero | timestamp_expired);
-                    found_key = found_key | msg_id_is_key;
-                    found_key_needs_overwrite =
-                        found_key_needs_overwrite | (msg_id_is_key & timestamp_expired);
+                    found_free_space |= msg_id_is_zero | timestamp_expired;
+                    found_key |= msg_id_is_key;
+                    found_key_needs_overwrite |= msg_id_is_key & timestamp_expired;
 
                     // If this msg_id matches our key, or it's a free space and we haven't found our
                     // key already, then we should update the desired_index
@@ -398,7 +397,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> MessageBus<OSC> 
                     // msg_id we are looking at now.
                     // This might happen multiple times in the loop, taking the last one seems okay.
                     // TODO: maybe we should take the oldest message?
-                    id.cmov(id_is_zero & !(msg_id_is_zero | timestamp_expired), &msg_id)
+                    id.cmov(id_is_zero & !(msg_id_is_zero | timestamp_expired), msg_id)
                 }
 
                 let mut delete = Choice::from(0);
@@ -434,10 +433,10 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> MessageBus<OSC> 
                         // has permission, OR if the timestamp is expired.
                         delete = (has_permission & is_delete_request) | timestamp_expired;
 
-                        delete.clone()
+                        delete
                     });
 
-                delete = delete | message_omap_result_code.ct_eq(&OMAP_NOT_FOUND);
+                delete |= message_omap_result_code.ct_eq(&OMAP_NOT_FOUND);
 
                 // Now update the record in the recipient's table with what happened.
                 // If it's an update, we have to update the timestamp.
@@ -655,7 +654,7 @@ mod tests {
                     payload: vec![0u8; 936],
                 };
 
-                let (challenge, req) = sign_query(*id, REQUEST_TYPE_READ, empty, &mut rng);
+                let (challenge, req) = sign_query(id, REQUEST_TYPE_READ, empty, &mut rng);
                 let resp = bus.handle_query(&req, &challenge).unwrap();
 
                 assert_eq!(&resp.record.msg_id, &[0u8; 16]);
@@ -687,7 +686,7 @@ mod tests {
 
             // Identity one and three should not have incoming messages
             for id in &[&secret1, &secret3] {
-                let (challenge, req) = sign_query(*id, REQUEST_TYPE_READ, rec.clone(), &mut rng);
+                let (challenge, req) = sign_query(id, REQUEST_TYPE_READ, rec.clone(), &mut rng);
                 let resp = bus.handle_query(&req, &challenge).unwrap();
 
                 assert_eq!(&resp.record.msg_id, &[0u8; 16]);
@@ -712,7 +711,7 @@ mod tests {
             rec.recipient = public2.clone();
 
             for id in &[&secret1, &secret3] {
-                let (challenge, req) = sign_query(*id, REQUEST_TYPE_READ, rec.clone(), &mut rng);
+                let (challenge, req) = sign_query(id, REQUEST_TYPE_READ, rec.clone(), &mut rng);
                 let resp = bus.handle_query(&req, &challenge).unwrap();
 
                 assert_eq!(&resp.record.msg_id, &[0u8; 16]);
@@ -732,7 +731,7 @@ mod tests {
             rec.msg_id = resp1.record.msg_id.clone();
 
             for id in &[&secret1, &secret2] {
-                let (challenge, req) = sign_query(*id, REQUEST_TYPE_READ, rec.clone(), &mut rng);
+                let (challenge, req) = sign_query(id, REQUEST_TYPE_READ, rec.clone(), &mut rng);
                 let resp = bus.handle_query(&req, &challenge).unwrap();
 
                 assert_eq!(&resp.record.msg_id, &resp1.record.msg_id);
@@ -746,6 +745,9 @@ mod tests {
                 assert_eq!(&resp.record.msg_id, &[0u8; 16]);
                 assert_eq!(&resp.record.payload, &[0u8; 936]);
             }
+
+            drop(public2);
+            drop(rec);
         });
     }
 }
