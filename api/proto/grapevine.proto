@@ -105,7 +105,7 @@ message QueryRequest {
     bytes auth_identity = 2;
     /// A 64 byte ristretto signature, using the private key of the caller, which is
     /// verified against the auth_identity. This signature is made over 32 random bytes
-    /// drawn from the challenge RNG. (See AuthMessageWithChallengeseed).
+    /// drawn from the challenge RNG. (See AuthMessageWithChallengeSeed).
     bytes auth_signature = 3;
     /// The record which you are reading or writing. Depending on the request type,
     /// this data will be either written to the bus, or its msg_id will be read from
