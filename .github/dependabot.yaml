@@ -14,6 +14,9 @@ updates:
     directory: "/"
     schedule:
       interval: daily
+    foobar:
+    foobar:
+    foobar:
     commit-message:
       prefix: "chore(submodule)"
     reviewers:
