@@ -15,6 +15,8 @@ ignore = [
     # via build dependencies
     "RUSTSEC-2020-0036",
     "RUSTSEC-2019-0036",
+    # atty has a security vulnerability, but it only affects windows in obscure configurations
+    "RUSTSEC-2021-0145",
 ]
 
 [licenses]
@@ -62,7 +64,9 @@ highlight = "all"
 allow = []
 deny = [
     # https://github.com/briansmith/ring/issues/774
-    { name = "ring" },
+    # Unfortunately, we can't ban ring right now, because `mc-common` turns on
+    # rustls for sentry.
+    # { name = "ring" },
 ]
 skip = [
     # Workaround for path only dependencies,

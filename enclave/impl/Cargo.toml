@@ -1,0 +1,41 @@
+[package]
+name = "mc-grapevine-enclave-impl"
+version = "4.0.2"
+authors = ["MobileCoin"]
+edition = "2021"
+license = "GPL-3.0"
+rust-version = { workspace = true }
+
+[dependencies]
+# mobilecoin
+mc-attest-core = { path = "../../mobilecoin/attest/core", default-features = false }
+mc-attest-enclave-api = { path = "../../mobilecoin/attest/enclave-api", default-features = false }
+mc-common = { path = "../../mobilecoin/common" }
+mc-crypto-ake-enclave = { path = "../../mobilecoin/crypto/ake/enclave" }
+mc-crypto-keys = { path = "../../mobilecoin/crypto/keys", default-features = false }
+mc-crypto-rand = { path = "../../mobilecoin/crypto/rand", default-features = false }
+mc-sgx-compat = { path = "../../mobilecoin/sgx/compat", default-features = false }
+mc-sgx-report-cache-api = { path = "../../mobilecoin/sgx/report-cache/api" }
+mc-util-serial = { path = "../../mobilecoin/util/serial", default-features = false }
+
+# mc-oblivious
+aligned-cmov = "2.3"
+generic-array = { version = "0.14", default-features = false }
+mc-oblivious-map = "2.3"
+mc-oblivious-ram = "2.3"
+mc-oblivious-traits = "2.3"
+
+# grapevine
+mc-grapevine-enclave-api = { path = "../api" }
+mc-grapevine-types = { path = "../../types" }
+
+# third-party
+rand_chacha = { version = "0.3", default-features = false }
+
+[dev-dependencies]
+mc-grapevine-types = { path = "../../types", features = ["from-random"] }
+
+mc-common = { path = "../../mobilecoin/common", features = ["loggers"] }
+mc-util-from-random = { path = "../../mobilecoin/util/from-random" }
+mc-util-test-helper = { path = "../../mobilecoin/util/test-helper" }
+zeroize = "1.0"
