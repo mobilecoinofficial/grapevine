@@ -52,10 +52,29 @@ pub struct QueryRequest {
     pub auth_signature: Vec<u8>,
 
     /// The record associated to this request.
-    /// In all cases this must be a fully populated fized-size Record to ensure
-    /// constant size on the wire.
+    /// In all cases this must be a fully populated fized-size RequestRecord
+    /// to ensure constant size on the wire.
     #[prost(message, required, tag = "4")]
-    pub record: Record,
+    pub record: RequestRecord,
+}
+
+/// The parts of a record that appear in a request
+#[derive(Clone, Eq, PartialEq, Message)]
+pub struct RequestRecord {
+    /// The id number of this message. Must be exactly 16 bytes, typically
+    /// random. All zeroes is an invalid key and typically is used to mean
+    /// "show me my next message" in the API, which will have a different ID
+    /// from all zeroes.
+    #[prost(bytes, tag = "1")]
+    pub msg_id: Vec<u8>,
+
+    /// The recipient of this message. Must be a 32 byte ristretto public key.
+    #[prost(bytes, tag = "2")]
+    pub recipient: Vec<u8>,
+
+    /// The (opaque) payload of this message. This is a fixed number of bytes.
+    #[prost(bytes, tag = "3")]
+    pub payload: Vec<u8>,
 }
 
 /// A record (alternatively, a "message") in the message bus
@@ -104,17 +123,64 @@ pub struct QueryResponse {
 pub const STATUS_CODE_SUCCESS: u32 = 1;
 /// No matching record was found
 pub const STATUS_CODE_NOT_FOUND: u32 = 2;
-/// No matching record was found
+/// This message id is already in use, so we cannot create the new message
 pub const STATUS_CODE_MESSAGE_ID_ALREADY_IN_USE: u32 = 3;
-/// The message id is invalid in this context. (All zeroes has special meaning.)
-pub const STATUS_CODE_INVALID_MESSAGE_ID: u32 = 4;
 /// The recipient id is invalid.
-pub const STATUS_CODE_INVALID_RECIPIENT: u32 = 5;
-/// There are too many in-flight messages for this user.
-pub const STATUS_CODE_TOO_MANY_MESSAGES_FOR_USER: u32 = 6;
-/// There are too many users, we are close to capacity.
-pub const STATUS_CODE_TOO_MANY_USERS: u32 = 7;
+pub const STATUS_CODE_INVALID_RECIPIENT: u32 = 4;
+/// There are too many in-flight messages for this recipient.
+pub const STATUS_CODE_TOO_MANY_MESSAGES_FOR_RECIPIENT: u32 = 5;
+/// There are too many recipients with in-flight messages
+pub const STATUS_CODE_TOO_MANY_RECIPIENTS: u32 = 6;
 /// There are too many messages in flight, we are close to capacity.
-pub const STATUS_CODE_TOO_MANY_MESSAGES: u32 = 8;
+pub const STATUS_CODE_TOO_MANY_MESSAGES: u32 = 7;
 /// An internal error has occurred.
-pub const STATUS_CODE_INTERNAL_ERROR: u32 = 9;
+pub const STATUS_CODE_INTERNAL_ERROR: u32 = 8;
+
+// This is used by some test code
+#[cfg(feature = "from-random")]
+mod from_random {
+    use super::*;
+    use mc_util_from_random::{CryptoRng, FromRandom, RngCore};
+
+    impl FromRandom for RequestRecord {
+        fn from_random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
+            Self {
+                msg_id: <[u8; 16]>::from_random(rng).to_vec(),
+                recipient: <[u8; 32]>::from_random(rng).to_vec(),
+                payload: <[u8; 936]>::from_random(rng).to_vec(),
+            }
+        }
+    }
+
+    impl FromRandom for Record {
+        fn from_random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
+            Self {
+                msg_id: <[u8; 16]>::from_random(rng).to_vec(),
+                sender: <[u8; 32]>::from_random(rng).to_vec(),
+                recipient: <[u8; 32]>::from_random(rng).to_vec(),
+                timestamp: rng.next_u64(),
+                payload: <[u8; 936]>::from_random(rng).to_vec(),
+            }
+        }
+    }
+
+    impl FromRandom for QueryRequest {
+        fn from_random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
+            Self {
+                request_type: (rng.next_u32() % 4) + 1,
+                auth_identity: <[u8; 32]>::from_random(rng).to_vec(),
+                auth_signature: <[u8; 64]>::from_random(rng).to_vec(),
+                record: RequestRecord::from_random(rng),
+            }
+        }
+    }
+
+    impl FromRandom for QueryResponse {
+        fn from_random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
+            Self {
+                record: Record::from_random(rng),
+                status_code: (rng.next_u32() % 9) + 1,
+            }
+        }
+    }
+}

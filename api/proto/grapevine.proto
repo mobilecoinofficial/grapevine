@@ -1,0 +1,197 @@
+// Copyright (c) 2018-2023 The MobileCoin Foundation
+
+syntax = "proto3";
+
+package grapevine;
+option go_package = "grapevine/api";
+
+import "attest.proto";
+
+service GrapevineAPI {
+    /// This is called to perform IX key exchange with the enclave before calling Query.
+    rpc Auth(attest.AuthMessage) returns (AuthMessageWithChallengeSeed) {}
+    /// Input should be an encrypted QueryRequest, result is an encrypted QueryResponse
+    rpc Query(attest.Message) returns (attest.Message) {}
+}
+
+/// The GrapevineAPI returns an extra encrypted payload with its AuthMessage when you
+/// request to open an attested connection.
+///
+/// The encryted_challenge_seed is 32 random bytes chosen by the enclave,
+/// which it uses as a seed to ChaCha20. You must decrypt these bytes after
+/// completing handshake and initializing cipher, and then seed your own ChaCh20.
+/// Whenever you send a query to the grapevine enclave over this channel thereafter,
+/// you must draw 32 bytes from ChaCha20, and sign them with your private key,
+/// to authenticate your identity with the enclave.
+message AuthMessageWithChallengeSeed {
+    /// The auth message normally returned during MobileCoin Auth attestation calls
+    attest.AuthMessage auth_message = 1;
+    /// The encrypted challenge seed is conceptually an attest::Message sent from
+    /// the server to the client. This is the encrypted 32 byte seed to ChaCha20.
+    /// However, some part ofs this message are redundant.
+    /// The .aad part is always empty.
+    /// The .channel_id is always implied from context.
+    /// So .encrypted_challenge_seed here is only the .data part of this attest::Message.
+    bytes encrypted_challenge_seed = 2;
+}
+
+/// Encrypted protos
+
+/// A code used for indicating which request type you want to make to the grapevine service.
+/// The actual request object uses fixed32 instead to avoid information leakage from
+/// protobuf compression etc., but you can use this as a source of truth to decode those
+/// integers.
+enum RequestType {
+    /// This status code is not used, but proto requires that a 0 enum value exists.
+    INVALID_REQUEST = 0;
+    /// Create a new record with the message bus
+    CREATE = 1;
+    /// Read a record from the message bus
+    READ = 2;
+    /// Update an existing record in the message bus
+    UPDATE = 3;
+    /// Delete a record from the message bus
+    DELETE = 4;
+}
+
+/// An encrypted request sent to the grapevine service.
+///
+/// All of these requests:
+///  * Must have a non-zero auth identity.
+///  * Must have an auth_identity which checks against the signature, signing over the challenge bytes
+///  * Must have a fully populated Record, even if they are reading.
+///
+/// The request will fail fast if these are not the case.
+///
+/// Create: Add the given record to message set.
+/// Note that the message id that you specify will be ignored, and a random message id
+/// will be chosen and returned in the response.
+///
+///   Returns error statuses if:
+///   * The randomly chosen message-id led to a collision (unlikely).
+///   * The recipient id is all zeroes.
+///   * The recipient has too many messages in-flight right now.
+///   * The message bus has too many messages in-flight right now.
+///   * There are too many recipients with in-flight messages.
+///
+/// The message id when a message is created is always nonzero and chosen randomly,
+/// regardless of what is specified in the RequestRecord. This works to prevent onlookers
+/// from detecting if a particular message id exists or was deleted via this method.
+///
+/// Read (with nonzero message id) Returns the message with the given msg_id.
+///
+///   Returns status NOT_FOUND if:
+///   * No message was found with this ID
+///   * The auth identity does not match the sender or recipient of the message.
+///
+/// Read (with zero message id) Returns the next message addressed to the the auth_identity.
+///
+///   Returns status NOT_FOUND if:
+///   * There are no new messages for this identity.
+///
+/// Update: Updates the payload of a message with a given id. The recipient field must be correct.
+///   The timestamp will also be updated.
+///
+///   Returns a hard grpc-level error if the message id is all zeroes (invalid here).
+///
+///   Returns status NOT_FOUND if:
+///   * The message id is not found
+///   * The auth identity does not match the sender or recipient of the message.
+///
+///   Returns status INVALID_RECIPIENT_ID if:
+///   * The specified recipient is not the current recipient of this message.
+///
+/// Delete (with nonzero message id): Deletes the message with a given id.
+///   The recipient field must also be correct.
+///   OR if the all zeroes id is passed, returns and deletes the next message for the recipient.
+///
+///   Returns error status NOT_FOUND if:
+///   * The message id is not found
+///   * The auth identity does not match the sender or recipient of the message.
+///
+///   Returns error status INVALID_RECIPIENT_ID if:
+///   * The specified recipient is not the current recipient of this message.
+///
+/// Delete (with zero message id): Returns and deletes the next message addressed to auth_identity.
+///
+///   Returns error status NOT_FOUND if:
+///   * There are no new messages for this identity.
+///
+/// Read, Update, and Delete queries are meant to be indistinguishable to the service operator,
+/// taking into account access patterns and timings of the enclave.
+/// Create is distinguishable from these, when taking into account access patterns and timings.
+message QueryRequest {
+    /// The type of the request. This is one of the integers from RequestType enum.
+    fixed32 request_type = 1;
+    /// A 32 byte ristreto public key corresponding to the identity of the caller.
+    bytes auth_identity = 2;
+    /// A 64 byte ristretto signature, using the private key of the caller, which is
+    /// verified against the auth_identity. This signature is made over 32 random bytes
+    /// drawn from the challenge RNG. (See AuthMessageWithChallengeSeed).
+    bytes auth_signature = 3;
+    /// The record which you are reading or writing. Depending on the request type,
+    /// this data will be either written to the bus, or its msg_id will be read from
+    /// the bus. In all cases it must be a complete record.
+    Record record = 4;
+}
+
+/// A RequestRecord is a subset of the fields in a Record, which may appear in
+/// a request. (Some fields like sender, timestamp, cannot be specified by the user
+/// and are ignored when creating or updating a record.)
+/// The RequestRecord is exclusively used in Requests, and Record is used in Responses.
+/// This makes it easier to perform schema evolution.
+/// Note that some of these fields are not used for some types of requests, but they
+/// still must be initialized to the right number of bytes anyways.
+message RequestRecord {
+    /// A 16 byte id for the message
+    bytes msg_id = 1;
+    /// A 32 byte ristretto public key for the recipient
+    bytes recipient = 2;
+    /// The payload is 936 bytes which are uninterpretted by the grapevine service.
+    bytes payload = 3;
+}
+
+/// A record is conceptually a message in the message bus.
+/// It corresponds to a fixed-size byte blob which gets moved in and out of ORAM.
+message Record {
+    /// A 16 byte id for the message
+    bytes msg_id = 1;
+    /// A 32 byte ristretto public key for the sender
+    bytes sender = 2;
+    /// A 32 byte ristretto public key for the recipient
+    bytes recipient = 3;
+    /// A UTC timestamp (seconds since the unix epoch), indicating when the record
+    /// was last created or updated.
+    fixed64 timestamp = 4;
+    /// The payload is 936 bytes which are uninterpretted by the grapevine service.
+    bytes payload = 5;
+}
+
+/// An encrypted response sent from the grapevine service
+message QueryResponse {
+    /// The record returned in response to the request
+    Record record = 1;
+    /// The status code of the operation
+    fixed32 status_code = 2;
+}
+
+enum StatusCode {
+    // This status code is not used, but proto requires that a 0 enum value exists.
+    INVALID_STATUS = 0;
+    // The operation was successful
+    SUCCESS = 1;
+    // The queried item was not found
+    NOT_FOUND = 2;
+    // The message id is already in use, and so we cannot create the new record
+    MESSAGE_ID_ALREADY_IN_USE = 3;
+    // The recipient is invalid
+    INVALID_RECIPIENT = 4;
+    // There are too many messages in-flight for this recipient
+    TOO_MANY_MESSAGES_FOR_RECIPIENT = 5;
+    // There are too many recipients with in-flight messages
+    TOO_MANY_RECIPIENTS = 6;
+    // There are too many messages in-flight
+    TOO_MANY_MESSAGES = 7;
+    // There was an internal error while handling the request
+    INTERNAL_ERROR = 8;
+}
