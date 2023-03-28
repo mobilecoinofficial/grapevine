@@ -70,10 +70,6 @@ fn test_status_code_enum_values() {
         grapevine::StatusCode::MESSAGE_ID_ALREADY_IN_USE as u32
     );
     assert_eq!(
-        mc_grapevine_types::STATUS_CODE_INVALID_MESSAGE_ID,
-        grapevine::StatusCode::INVALID_MESSAGE_ID as u32
-    );
-    assert_eq!(
         mc_grapevine_types::STATUS_CODE_INVALID_RECIPIENT,
         grapevine::StatusCode::INVALID_RECIPIENT as u32
     );

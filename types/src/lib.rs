@@ -125,18 +125,16 @@ pub const STATUS_CODE_SUCCESS: u32 = 1;
 pub const STATUS_CODE_NOT_FOUND: u32 = 2;
 /// This message id is already in use, so we cannot create the new message
 pub const STATUS_CODE_MESSAGE_ID_ALREADY_IN_USE: u32 = 3;
-/// The message id is invalid in this context. (All zeroes has special meaning.)
-pub const STATUS_CODE_INVALID_MESSAGE_ID: u32 = 4;
 /// The recipient id is invalid.
-pub const STATUS_CODE_INVALID_RECIPIENT: u32 = 5;
+pub const STATUS_CODE_INVALID_RECIPIENT: u32 = 4;
 /// There are too many in-flight messages for this recipient.
-pub const STATUS_CODE_TOO_MANY_MESSAGES_FOR_RECIPIENT: u32 = 6;
+pub const STATUS_CODE_TOO_MANY_MESSAGES_FOR_RECIPIENT: u32 = 5;
 /// There are too many recipients with in-flight messages
-pub const STATUS_CODE_TOO_MANY_RECIPIENTS: u32 = 7;
+pub const STATUS_CODE_TOO_MANY_RECIPIENTS: u32 = 6;
 /// There are too many messages in flight, we are close to capacity.
-pub const STATUS_CODE_TOO_MANY_MESSAGES: u32 = 8;
+pub const STATUS_CODE_TOO_MANY_MESSAGES: u32 = 7;
 /// An internal error has occurred.
-pub const STATUS_CODE_INTERNAL_ERROR: u32 = 9;
+pub const STATUS_CODE_INTERNAL_ERROR: u32 = 8;
 
 // This is used by some test code
 #[cfg(feature = "from-random")]

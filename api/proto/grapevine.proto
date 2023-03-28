@@ -26,9 +26,12 @@ service GrapevineAPI {
 message AuthMessageWithChallengeSeed {
     /// The auth message normally returned during MobileCoin Auth attestation calls
     attest.AuthMessage auth_message = 1;
-    /// The .data portion of an EnclaveMessage<ClientSession> from the server to the client.
-    /// The .aad portion is empty, and the session is implied from context.
-    /// Decrypting this produces a 32 byte seed to ChaCha20.
+    /// The encrypted challenge seed is conceptually an attest::Message sent from
+    /// the server to the client. This is the encrypted 32 byte seed to ChaCha20.
+    /// However, some part ofs this message are redundant.
+    /// The .aad part is always empty.
+    /// The .channel_id is always implied from context.
+    /// So .encrypted_challenge_seed here is only the .data part of this attest::Message.
     bytes encrypted_challenge_seed = 2;
 }
 
@@ -54,46 +57,65 @@ enum RequestType {
 /// An encrypted request sent to the grapevine service.
 ///
 /// All of these requests:
+///  * Must have a non-zero auth identity.
 ///  * Must have an auth_identity which checks against the signature, signing over the challenge bytes
 ///  * Must have a fully populated Record, even if they are reading.
 ///
 /// The request will fail fast if these are not the case.
 ///
 /// Create: Add the given record to message set.
-///   The timestamp you pass will be ignored, and set by the enclave instead.
+/// Note that the message id that you specify will be ignored, and a random message id
+/// will be chosen and returned in the response.
 ///
 ///   Returns error statuses if:
-///   * The auth identity does not match the sender of the message.
-///   * The message id is in-use
-///   * The message id is all zeroes
-///   * The recipient id is all zeroes
+///   * The randomly chosen message-id led to a collision (unlikely).
+///   * The recipient id is all zeroes.
 ///   * The recipient has too many messages in-flight right now.
 ///   * The message bus has too many messages in-flight right now.
 ///   * There are too many recipients with in-flight messages.
 ///
-/// Read: Returns the message with the given msg_id.
-///   OR if all the zeroes id is passed, returns the next message for this recipient.
+/// The message id when a message is created is always nonzero and chosen randomly,
+/// regardless of what is specified in the RequestRecord. This works to prevent onlookers
+/// from detecting if a particular message id exists or was deleted via this method.
 ///
-///   Returns error statuses if:
+/// Read (with nonzero message id) Returns the message with the given msg_id.
+///
+///   Returns status NOT_FOUND if:
+///   * No message was found with this ID
 ///   * The auth identity does not match the sender or recipient of the message.
+///
+/// Read (with zero message id) Returns the next message addressed to the the auth_identity.
+///
+///   Returns status NOT_FOUND if:
+///   * There are no new messages for this identity.
 ///
 /// Update: Updates the payload of a message with a given id. The recipient field must be correct.
 ///   The timestamp will also be updated.
 ///
-///   Returns error statuses if:
-///   * The auth identity does not match the sender or recipient of the message.
+///   Returns a hard grpc-level error if the message id is all zeroes (invalid here).
+///
+///   Returns status NOT_FOUND if:
 ///   * The message id is not found
-///   * The message id is all zeroes (invalid here)
+///   * The auth identity does not match the sender or recipient of the message.
+///
+///   Returns status INVALID_RECIPIENT_ID if:
 ///   * The specified recipient is not the current recipient of this message.
 ///
-/// Delete: Deletes the payload of a message with a given id. The recipient field must also be correct.
+/// Delete (with nonzero message id): Deletes the message with a given id.
+///   The recipient field must also be correct.
 ///   OR if the all zeroes id is passed, returns and deletes the next message for the recipient.
 ///
-///   Returns error statuses if:
-///   * The auth identity does not match the sender or recipient of the message.
+///   Returns error status NOT_FOUND if:
 ///   * The message id is not found
-///   * The message id is all zeroes (invalid here)
+///   * The auth identity does not match the sender or recipient of the message.
+///
+///   Returns error status INVALID_RECIPIENT_ID if:
 ///   * The specified recipient is not the current recipient of this message.
+///
+/// Delete (with zero message id): Returns and deletes the next message addressed to auth_identity.
+///
+///   Returns error status NOT_FOUND if:
+///   * There are no new messages for this identity.
 ///
 /// Read, Update, and Delete queries are meant to be indistinguishable to the service operator,
 /// taking into account access patterns and timings of the enclave.
@@ -118,6 +140,8 @@ message QueryRequest {
 /// and are ignored when creating or updating a record.)
 /// The RequestRecord is exclusively used in Requests, and Record is used in Responses.
 /// This makes it easier to perform schema evolution.
+/// Note that some of these fields are not used for some types of requests, but they
+/// still must be initialized to the right number of bytes anyways.
 message RequestRecord {
     /// A 16 byte id for the message
     bytes msg_id = 1;
@@ -160,16 +184,14 @@ enum StatusCode {
     NOT_FOUND = 2;
     // The message id is already in use, and so we cannot create the new record
     MESSAGE_ID_ALREADY_IN_USE = 3;
-    // The message id is invalid
-    INVALID_MESSAGE_ID = 4;
     // The recipient is invalid
-    INVALID_RECIPIENT = 5;
+    INVALID_RECIPIENT = 4;
     // There are too many messages in-flight for this recipient
-    TOO_MANY_MESSAGES_FOR_RECIPIENT = 6;
+    TOO_MANY_MESSAGES_FOR_RECIPIENT = 5;
     // There are too many recipients with in-flight messages
-    TOO_MANY_RECIPIENTS = 7;
+    TOO_MANY_RECIPIENTS = 6;
     // There are too many messages in-flight
-    TOO_MANY_MESSAGES = 8;
+    TOO_MANY_MESSAGES = 7;
     // There was an internal error while handling the request
-    INTERNAL_ERROR = 9;
+    INTERNAL_ERROR = 8;
 }
