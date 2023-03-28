@@ -10,6 +10,15 @@ updates:
     reviewers:
       - "mobilecoinfoundation/crypto-eng"
 
+  - package-ecosystem: gitsubmodule
+    directory: "/"
+    schedule:
+      interval: daily
+    commit-message:
+      prefix: "chore(submodule)"
+    reviewers:
+      - "mobilecoinfoundation/crypto-eng"
+
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
