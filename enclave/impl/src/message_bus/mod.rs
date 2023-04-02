@@ -652,6 +652,8 @@ mod tests {
         let mut bus = get_test_bus(logger);
 
         run_with_several_seeds(|mut rng| {
+            let test_timestamp = bus.get_current_timestamp();
+
             let identity1 = RistrettoPrivate::from_random(&mut rng);
             let identity2 = RistrettoPrivate::from_random(&mut rng);
             let identity3 = RistrettoPrivate::from_random(&mut rng);
@@ -696,7 +698,7 @@ mod tests {
             assert_eq!(resp1.record.sender, public1);
             assert_eq!(resp1.record.recipient, public2);
             assert_eq!(resp1.record.payload, vec![7u8; 936]);
-            assert_eq!(resp1.record.timestamp, TEST_TIMESTAMP);
+            assert_eq!(resp1.record.timestamp, test_timestamp);
 
             // Start with an all zeroes read request
             let mut rec = RequestRecord {
@@ -712,6 +714,7 @@ mod tests {
 
                 assert_eq!(&resp.record.msg_id, &[0u8; 16]);
                 assert_eq!(&resp.record.payload, &[0u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp);
             }
 
             // Identity two should have the 7's message
@@ -721,7 +724,7 @@ mod tests {
                 let resp = bus.handle_query(&req, &challenge).unwrap();
 
                 assert_eq!(&resp.record.payload, &[7u8; 936]);
-                assert_eq!(resp.record.timestamp, TEST_TIMESTAMP);
+                assert_eq!(resp.record.timestamp, test_timestamp);
                 assert_eq!(&resp.record.sender, &public1);
                 assert_eq!(&resp.record.recipient, &public2);
                 assert_eq!(&resp.record.msg_id, &resp1.record.msg_id);
@@ -737,6 +740,7 @@ mod tests {
 
                 assert_eq!(&resp.record.msg_id, &[0u8; 16]);
                 assert_eq!(&resp.record.payload, &[0u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp);
             }
             {
                 let (challenge, req) =
@@ -745,6 +749,7 @@ mod tests {
 
                 assert_eq!(&resp.record.msg_id, &resp1.record.msg_id);
                 assert_eq!(&resp.record.payload, &[7u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp);
             }
 
             // Try changing the request.msg_id to match the actual message id.
@@ -757,6 +762,7 @@ mod tests {
 
                 assert_eq!(&resp.record.msg_id, &resp1.record.msg_id);
                 assert_eq!(&resp.record.payload, &[7u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp);
             }
             {
                 let (challenge, req) =
@@ -765,6 +771,7 @@ mod tests {
 
                 assert_eq!(&resp.record.msg_id, &[0u8; 16]);
                 assert_eq!(&resp.record.payload, &[0u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp);
             }
 
             drop(public2);
@@ -803,6 +810,7 @@ mod tests {
 
                 assert_eq!(&resp.record.msg_id, &[0u8; 16]);
                 assert_eq!(&resp.record.payload, &[0u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp);
             }
 
             // Send 7's from identity 1 to identity 2
@@ -837,6 +845,7 @@ mod tests {
 
                 assert_eq!(&resp.record.msg_id, &[0u8; 16]);
                 assert_eq!(&resp.record.payload, &[0u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp);
             }
 
             // Identity two should have the 7's message
@@ -860,6 +869,7 @@ mod tests {
 
                 assert_eq!(&resp.record.msg_id, &[0u8; 16]);
                 assert_eq!(&resp.record.payload, &[0u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp);
             }
 
             // Update timestamp in the message bus
@@ -931,6 +941,7 @@ mod tests {
 
                 assert_eq!(&resp.record.payload, &[0u8; 936]);
                 assert_eq!(&resp.record.msg_id, &[0u8; 16]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 100);
             }
 
             bus.set_current_timestamp(test_timestamp + 200);
@@ -1196,6 +1207,7 @@ mod tests {
 
                 assert_eq!(&resp.record.msg_id, &[0u8; 16]);
                 assert_eq!(&resp.record.payload, &[0u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp);
             }
 
             // Send 7's from identity 1 to identity 2
@@ -1230,6 +1242,7 @@ mod tests {
 
                 assert_eq!(&resp.record.msg_id, &[0u8; 16]);
                 assert_eq!(&resp.record.payload, &[0u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp);
             }
 
             // Identity two should have the 7's message
@@ -1253,6 +1266,7 @@ mod tests {
 
                 assert_eq!(&resp.record.msg_id, &[0u8; 16]);
                 assert_eq!(&resp.record.payload, &[0u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp);
             }
 
             // Update timestamp in the message bus
@@ -1285,6 +1299,7 @@ mod tests {
 
                 assert_eq!(&resp.record.msg_id, &[0u8; 16]);
                 assert_eq!(&resp.record.payload, &[0u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 100);
             }
 
             // No one should now be able to see anything in their inboxes
@@ -1295,6 +1310,7 @@ mod tests {
 
                 assert_eq!(&resp.record.msg_id, &[0u8; 16]);
                 assert_eq!(&resp.record.payload, &[0u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 100);
             }
 
             // Send 9's from identity 2 to identity 1
@@ -1335,6 +1351,7 @@ mod tests {
 
                 assert_eq!(&resp.record.msg_id, &[0u8; 16]);
                 assert_eq!(&resp.record.payload, &[0u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 100);
             }
 
             // Identity three should not have incoming messages
@@ -1345,6 +1362,7 @@ mod tests {
 
                 assert_eq!(&resp.record.msg_id, &[0u8; 16]);
                 assert_eq!(&resp.record.payload, &[0u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 100);
             }
 
             let msg2_rec = RequestRecord {
@@ -1384,6 +1402,7 @@ mod tests {
 
                 assert_eq!(&resp.record.msg_id, &[0u8; 16]);
                 assert_eq!(&resp.record.payload, &[0u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 100);
             }
 
             bus.set_current_timestamp(test_timestamp + 200);
@@ -1413,6 +1432,7 @@ mod tests {
 
                 assert_eq!(&resp.record.msg_id, &[0u8; 16]);
                 assert_eq!(&resp.record.payload, &[0u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 200);
             }
 
             // Identity two should have the 11's message
@@ -1436,6 +1456,7 @@ mod tests {
 
                 assert_eq!(&resp.record.msg_id, &[0u8; 16]);
                 assert_eq!(&resp.record.payload, &[0u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 200);
             }
 
             // Identity two should be able to blind-delete the 11's message
