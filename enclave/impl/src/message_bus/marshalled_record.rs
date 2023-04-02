@@ -4,8 +4,8 @@
 
 use super::{MessageBusValueSize, MsgId};
 use aligned_cmov::{
-    typenum::{Diff, U32, U64, U72, U8},
-    A8Bytes, AsNeSlice,
+    typenum::{Diff, PartialDiv, U32, U64, U72, U8},
+    A8Bytes, ArrayLength, AsNeSlice,
 };
 use generic_array::sequence::Split;
 use mc_grapevine_enclave_api::QueryError;
@@ -116,48 +116,80 @@ impl MarshalledRecord for A8Bytes<MessageBusValueSize> {
     }
 
     fn get_sender(&self) -> &A8Bytes<U32> {
+        // Sender is first 32 bytes
         let (sender, _): (&A8Bytes<U32>, _) = self.split();
         sender
     }
 
     fn get_sender_mut(&mut self) -> &mut A8Bytes<U32> {
+        // Sender is first 32 bytes
         let (sender, _): (&mut A8Bytes<U32>, _) = self.split();
         sender
     }
 
     fn get_recipient(&self) -> &A8Bytes<U32> {
-        let (_sender, rest): (&A8Bytes<U32>, _) = self.split();
-        let (recipient, _rest): (&A8Bytes<U32>, _) = rest.split();
+        // Recipient is 32 bytes, offset is 32 bytes
+        let recipient: &A8Bytes<U32> = get_subarray::<U32, U32, _>(self);
         recipient
     }
 
     fn get_recipient_mut(&mut self) -> &mut A8Bytes<U32> {
-        let (_sender, rest): (&mut A8Bytes<U32>, _) = self.split();
-        let (recipient, _rest): (&mut A8Bytes<U32>, _) = rest.split();
+        // Recipient is 32 bytes, offset is 32 bytes
+        let recipient: &mut A8Bytes<U32> = get_subarray_mut::<U32, _, _>(self);
         recipient
     }
 
     fn get_timestamp(&self) -> &u64 {
-        let (_sender, mid): (&A8Bytes<U64>, _) = self.split();
-        let (timestamp, _rest): (&A8Bytes<U8>, _) = mid.split();
+        // Timestamp is 8 bytes, offset is 64 bytes
+        let timestamp: &A8Bytes<U8> = get_subarray::<U64, _, _>(self);
         &timestamp.as_ne_u64_slice()[0]
     }
 
     fn get_timestamp_mut(&mut self) -> &mut u64 {
-        let (_sender, mid): (&mut A8Bytes<U64>, _) = self.split();
-        let (timestamp, _rest): (&mut A8Bytes<U8>, _) = mid.split();
+        // Timestamp is 8 bytes, offset is 64 bytes
+        let timestamp: &mut A8Bytes<U8> = get_subarray_mut::<U64, _, _>(self);
         &mut timestamp.as_mut_ne_u64_slice()[0]
     }
 
     fn get_payload(&self) -> &A8Bytes<Diff<MessageBusValueSize, U72>> {
+        // Payload is everything after the first 72 bytes
         let (_header, payload): (&A8Bytes<U72>, _) = self.split();
         payload
     }
 
     fn get_payload_mut(&mut self) -> &mut A8Bytes<Diff<MessageBusValueSize, U72>> {
+        // Payload is everything after the first 72 bytes
         let (_header, payload): (&mut A8Bytes<U72>, _) = self.split();
         payload
     }
+}
+
+// Helper functions: Given an offset and a length, get a subarray of an array.
+// This is implemented by splitting twice.
+fn get_subarray<Offset, ResultLen, Len>(array: &A8Bytes<Len>) -> &A8Bytes<ResultLen>
+where
+    Len: ArrayLength<u8> + core::ops::Sub<Offset>,
+    Offset: ArrayLength<u8> + PartialDiv<U8>,
+    Diff<Len, Offset>: ArrayLength<u8> + core::ops::Sub<ResultLen>,
+    Diff<Diff<Len, Offset>, ResultLen>: ArrayLength<u8>,
+    ResultLen: ArrayLength<u8> + PartialDiv<U8>,
+{
+    let (_leading, rest): (&A8Bytes<Offset>, _) = array.split();
+    let (result, _trailing): (&A8Bytes<ResultLen>, _) = rest.split();
+    result
+}
+
+fn get_subarray_mut<Offset, ResultLen, Len>(array: &mut A8Bytes<Len>) -> &mut A8Bytes<ResultLen>
+where
+    Len: ArrayLength<u8> + core::ops::Sub<Offset>,
+    Offset: ArrayLength<u8> + PartialDiv<U8>,
+    Diff<Len, Offset>: ArrayLength<u8> + core::ops::Sub<ResultLen>,
+    Diff<Diff<Len, Offset>, ResultLen>: ArrayLength<u8>,
+    ResultLen: ArrayLength<u8> + PartialDiv<U8>,
+{
+    let (_leading, rest): (&mut A8Bytes<Offset>, _) = array.split();
+    let (result, _trailing): (&mut A8Bytes<ResultLen>, _) = rest.split();
+    result
 }
 
 #[cfg(test)]
