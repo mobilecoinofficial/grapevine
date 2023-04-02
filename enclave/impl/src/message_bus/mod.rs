@@ -12,6 +12,7 @@ use aligned_cmov::{
     A8Bytes, Aligned, AsAlignedChunks, AsNeSlice, CMov,
 };
 use alloc::boxed::Box;
+use core::cmp::max;
 use generic_array::sequence::Split;
 use mc_common::logger::Logger;
 use mc_crypto_keys::{RistrettoPublic, RistrettoSignature};
@@ -138,17 +139,29 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> MessageBus<OSC> 
             >>::create(
                 desired_capacity, STASH_SIZE, McRng::default
             )),
-            current_timestamp,
+            // current_timestamp = 0 is considered an invalid state,
+            // because if we return timestamp = 0 to the users, protobuf may
+            // omit that value and then not be constant-size on the wire.
+            // so we adjust it to unix-epoch + 1 second instead.
+            current_timestamp: max(1, current_timestamp),
             message_time_to_live,
             logger,
         }
+    }
+
+    /// Get the current timestamp.
+    #[allow(unused)]
+    pub fn get_current_timestamp(&self) -> u64 {
+        self.current_timestamp
     }
 
     /// Update the current timestamp. This affects what timestamps are assigned
     /// to any subsequent new records that are added, and can cause existing
     /// records to expire and get purged as the current timestamp increases.
     pub fn set_current_timestamp(&mut self, current_timestamp: u64) {
-        self.current_timestamp = current_timestamp;
+        // current_timestamp = 0 is an invalid state,
+        // it is adjusted to current_timestamp = 1 instead
+        self.current_timestamp = max(1, current_timestamp);
     }
 
     /// Update the message time-to-live value. This may cause more or fewer
@@ -231,9 +244,12 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> MessageBus<OSC> 
                     let (msg_id, timestamp): (&mut A8Bytes<U16>, &mut A8Bytes<U8>) = chunk.split();
 
                     let msg_id_is_zero = msg_id.ct_eq(&Default::default());
+                    // Wrapping-add is used because (1) we need to this be constant-time
+                    // (2) message_time_to_live is attacker-controlled and don't want them to be able
+                    // get information by observing when panics happen or not
                     let timestamp_expired = (timestamp.as_ne_u64_slice()[0]
-                        + self.message_time_to_live)
-                        .ct_lt(&self.current_timestamp);
+                        .wrapping_add(self.message_time_to_live))
+                    .ct_lt(&self.current_timestamp);
                     let msg_id_is_key = msg_id.ct_eq(&id);
 
                     // The space is vacant if its id is all zeroes, or the timestamp is expired
@@ -372,6 +388,8 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> MessageBus<OSC> 
 
         let mut result_id: MsgId = Default::default();
         let mut result_record: A8Bytes<MessageBusValueSize> = Default::default();
+        // If the search fails, we don't want to leave the timestamp as zero, because that leaks info in protobuf.
+        *result_record.get_timestamp_mut() = self.current_timestamp;
 
         let mut message_omap_result_code = 0u32;
         let mut recipient_omap_result_code = 0u32;
@@ -389,8 +407,8 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> MessageBus<OSC> 
 
                     let msg_id_is_zero = msg_id.ct_eq(&Default::default());
                     let timestamp_expired = (timestamp.as_ne_u64_slice()[0]
-                        + self.message_time_to_live)
-                        .ct_lt(&self.current_timestamp);
+                        .wrapping_add(self.message_time_to_live))
+                    .ct_lt(&self.current_timestamp);
 
                     // If it's a query with a zero msg_id, and the current one we are looking at is
                     // not zero and is not expired, then change id to be this
@@ -411,9 +429,10 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> MessageBus<OSC> 
                             | record.get_recipient().ct_eq(&identity);
 
                         // Check if the record is expired, if it is we will delete it now.
-                        let timestamp_expired = (record.get_timestamp()
-                            + self.message_time_to_live)
-                            .ct_lt(&self.current_timestamp);
+                        let timestamp_expired = (record
+                            .get_timestamp()
+                            .wrapping_add(self.message_time_to_live))
+                        .ct_lt(&self.current_timestamp);
 
                         // We should return this record as long as the user has permission,
                         // for all of read, update and delete.
@@ -493,10 +512,11 @@ mod tests {
     use mc_util_test_helper::{run_with_several_seeds, CryptoRng, RngCore};
 
     const TEST_TIMESTAMP: u64 = 10_000u64;
+    const TEST_TIME_TO_LIVE: u64 = 10_000u64;
 
     // Helper which inits a test MessageBus
     fn get_test_bus(logger: Logger) -> MessageBus<HeapORAMStorageCreator> {
-        MessageBus::new(4096, TEST_TIMESTAMP, 100u64, logger)
+        MessageBus::new(4096, TEST_TIMESTAMP, TEST_TIME_TO_LIVE, logger)
     }
 
     // Helper which builds a signed QueryRequest
@@ -628,26 +648,26 @@ mod tests {
     }
 
     #[test_with_logger]
-    fn create_and_read_visibility(logger: Logger) {
+    fn create_and_read_permissions_and_visibility(logger: Logger) {
         let mut bus = get_test_bus(logger);
 
         run_with_several_seeds(|mut rng| {
-            let secret1 = RistrettoPrivate::from_random(&mut rng);
-            let secret2 = RistrettoPrivate::from_random(&mut rng);
-            let secret3 = RistrettoPrivate::from_random(&mut rng);
+            let identity1 = RistrettoPrivate::from_random(&mut rng);
+            let identity2 = RistrettoPrivate::from_random(&mut rng);
+            let identity3 = RistrettoPrivate::from_random(&mut rng);
 
-            let public1 = CompressedRistrettoPublic::from(&RistrettoPublic::from(&secret1))
+            let public1 = CompressedRistrettoPublic::from(&RistrettoPublic::from(&identity1))
                 .as_bytes()
                 .to_vec();
-            let public2 = CompressedRistrettoPublic::from(&RistrettoPublic::from(&secret2))
+            let public2 = CompressedRistrettoPublic::from(&RistrettoPublic::from(&identity2))
                 .as_bytes()
                 .to_vec();
-            let _public3 = CompressedRistrettoPublic::from(&RistrettoPublic::from(&secret3))
+            let _public3 = CompressedRistrettoPublic::from(&RistrettoPublic::from(&identity3))
                 .as_bytes()
                 .to_vec();
 
             // No one should have any messages yet
-            for id in &[&secret1, &secret2, &secret3] {
+            for id in &[&identity1, &identity2, &identity3] {
                 let empty = RequestRecord {
                     msg_id: vec![0u8; 16],
                     recipient: vec![0u8; 32],
@@ -668,7 +688,7 @@ mod tests {
                 payload: vec![7u8; 936],
             };
 
-            let (challenge, req) = sign_query(&secret1, REQUEST_TYPE_CREATE, req1, &mut rng);
+            let (challenge, req) = sign_query(&identity1, REQUEST_TYPE_CREATE, req1, &mut rng);
 
             let resp1 = bus.handle_query(&req, &challenge).unwrap();
 
@@ -676,6 +696,7 @@ mod tests {
             assert_eq!(resp1.record.sender, public1);
             assert_eq!(resp1.record.recipient, public2);
             assert_eq!(resp1.record.payload, vec![7u8; 936]);
+            assert_eq!(resp1.record.timestamp, TEST_TIMESTAMP);
 
             // Start with an all zeroes read request
             let mut rec = RequestRecord {
@@ -685,7 +706,7 @@ mod tests {
             };
 
             // Identity one and three should not have incoming messages
-            for id in &[&secret1, &secret3] {
+            for id in &[&identity1, &identity3] {
                 let (challenge, req) = sign_query(id, REQUEST_TYPE_READ, rec.clone(), &mut rng);
                 let resp = bus.handle_query(&req, &challenge).unwrap();
 
@@ -696,7 +717,7 @@ mod tests {
             // Identity two should have the 7's message
             {
                 let (challenge, req) =
-                    sign_query(&secret2, REQUEST_TYPE_READ, rec.clone(), &mut rng);
+                    sign_query(&identity2, REQUEST_TYPE_READ, rec.clone(), &mut rng);
                 let resp = bus.handle_query(&req, &challenge).unwrap();
 
                 assert_eq!(&resp.record.payload, &[7u8; 936]);
@@ -710,7 +731,7 @@ mod tests {
             // This should not change anyone's permissions / visibility.
             rec.recipient = public2.clone();
 
-            for id in &[&secret1, &secret3] {
+            for id in &[&identity1, &identity3] {
                 let (challenge, req) = sign_query(id, REQUEST_TYPE_READ, rec.clone(), &mut rng);
                 let resp = bus.handle_query(&req, &challenge).unwrap();
 
@@ -719,7 +740,7 @@ mod tests {
             }
             {
                 let (challenge, req) =
-                    sign_query(&secret2, REQUEST_TYPE_READ, rec.clone(), &mut rng);
+                    sign_query(&identity2, REQUEST_TYPE_READ, rec.clone(), &mut rng);
                 let resp = bus.handle_query(&req, &challenge).unwrap();
 
                 assert_eq!(&resp.record.msg_id, &resp1.record.msg_id);
@@ -730,7 +751,7 @@ mod tests {
             // Now 1 and 2 should be able to see the 7's message, and 3 still should not
             rec.msg_id = resp1.record.msg_id.clone();
 
-            for id in &[&secret1, &secret2] {
+            for id in &[&identity1, &identity2] {
                 let (challenge, req) = sign_query(id, REQUEST_TYPE_READ, rec.clone(), &mut rng);
                 let resp = bus.handle_query(&req, &challenge).unwrap();
 
@@ -739,7 +760,7 @@ mod tests {
             }
             {
                 let (challenge, req) =
-                    sign_query(&secret3, REQUEST_TYPE_READ, rec.clone(), &mut rng);
+                    sign_query(&identity3, REQUEST_TYPE_READ, rec.clone(), &mut rng);
                 let resp = bus.handle_query(&req, &challenge).unwrap();
 
                 assert_eq!(&resp.record.msg_id, &[0u8; 16]);
@@ -748,6 +769,715 @@ mod tests {
 
             drop(public2);
             drop(rec);
+        });
+    }
+
+    #[test_with_logger]
+    fn update_permissions_and_visibility(logger: Logger) {
+        let mut bus = get_test_bus(logger);
+
+        run_with_several_seeds(|mut rng| {
+            let test_timestamp = bus.get_current_timestamp();
+
+            let identity1 = RistrettoPrivate::from_random(&mut rng);
+            let identity2 = RistrettoPrivate::from_random(&mut rng);
+            let identity3 = RistrettoPrivate::from_random(&mut rng);
+
+            let public1 = CompressedRistrettoPublic::from(&RistrettoPublic::from(&identity1))
+                .as_bytes()
+                .to_vec();
+            let public2 = CompressedRistrettoPublic::from(&RistrettoPublic::from(&identity2))
+                .as_bytes()
+                .to_vec();
+
+            // No one should have any messages yet
+            for id in &[&identity1, &identity2, &identity3] {
+                let empty = RequestRecord {
+                    msg_id: vec![0u8; 16],
+                    recipient: vec![0u8; 32],
+                    payload: vec![0u8; 936],
+                };
+
+                let (challenge, req) = sign_query(id, REQUEST_TYPE_READ, empty, &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.msg_id, &[0u8; 16]);
+                assert_eq!(&resp.record.payload, &[0u8; 936]);
+            }
+
+            // Send 7's from identity 1 to identity 2
+            let req1 = RequestRecord {
+                msg_id: vec![0u8; 16],
+                recipient: public2.clone(),
+                payload: vec![7u8; 936],
+            };
+
+            let (challenge, req) = sign_query(&identity1, REQUEST_TYPE_CREATE, req1, &mut rng);
+
+            let resp1 = bus.handle_query(&req, &challenge).unwrap();
+
+            // Creating the message should have worked
+            assert_eq!(resp1.record.sender, public1);
+            assert_eq!(resp1.record.recipient, public2);
+            assert_eq!(resp1.record.payload, vec![7u8; 936]);
+            assert_eq!(resp1.record.timestamp, test_timestamp);
+
+            // Start with an all zeroes read request
+            let empty_rec = RequestRecord {
+                msg_id: vec![0u8; 16],
+                recipient: vec![0u8; 32],
+                payload: vec![0u8; 936],
+            };
+
+            // Identity one should not have incoming messages
+            {
+                let (challenge, req) =
+                    sign_query(&identity1, REQUEST_TYPE_READ, empty_rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.msg_id, &[0u8; 16]);
+                assert_eq!(&resp.record.payload, &[0u8; 936]);
+            }
+
+            // Identity two should have the 7's message
+            {
+                let (challenge, req) =
+                    sign_query(&identity2, REQUEST_TYPE_READ, empty_rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.payload, &[7u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp);
+                assert_eq!(&resp.record.sender, &public1);
+                assert_eq!(&resp.record.recipient, &public2);
+                assert_eq!(&resp.record.msg_id, &resp1.record.msg_id);
+            }
+
+            // Identity three should not have incoming messages
+            {
+                let (challenge, req) =
+                    sign_query(&identity3, REQUEST_TYPE_READ, empty_rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.msg_id, &[0u8; 16]);
+                assert_eq!(&resp.record.payload, &[0u8; 936]);
+            }
+
+            // Update timestamp in the message bus
+            bus.set_current_timestamp(test_timestamp + 100);
+
+            // Identity two should be able to update the message payload to 9's
+            {
+                let rec = RequestRecord {
+                    msg_id: resp1.record.msg_id.clone(),
+                    recipient: public2.clone(),
+                    payload: vec![9u8; 936],
+                };
+
+                let (challenge, req) =
+                    sign_query(&identity2, REQUEST_TYPE_UPDATE, rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                // The previous message was 7's
+                assert_eq!(&resp.record.payload, &[7u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp);
+                assert_eq!(&resp.record.sender, &public1);
+                assert_eq!(&resp.record.recipient, &public2);
+                assert_eq!(&resp.record.msg_id, &resp1.record.msg_id);
+            }
+
+            // Identity two should see the 9's message
+            {
+                let (challenge, req) =
+                    sign_query(&identity2, REQUEST_TYPE_READ, empty_rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.payload, &[9u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 100);
+                assert_eq!(&resp.record.sender, &public1);
+                assert_eq!(&resp.record.recipient, &public2);
+                assert_eq!(&resp.record.msg_id, &resp1.record.msg_id);
+            }
+
+            // Identity one should be able to see the message, by message id
+            {
+                let rec = RequestRecord {
+                    msg_id: resp1.record.msg_id.clone(),
+                    recipient: public2.clone(),
+                    payload: vec![0u8; 936],
+                };
+
+                let (challenge, req) =
+                    sign_query(&identity1, REQUEST_TYPE_READ, rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.payload, &[9u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 100);
+                assert_eq!(&resp.record.sender, &public1);
+                assert_eq!(&resp.record.recipient, &public2);
+                assert_eq!(&resp.record.msg_id, &resp1.record.msg_id);
+            }
+
+            // Identity one is not able to see the message in their own inbox.
+            {
+                let rec = RequestRecord {
+                    msg_id: vec![0u8; 16],
+                    recipient: vec![0u8; 32],
+                    payload: vec![9u8; 936],
+                };
+
+                let (challenge, req) =
+                    sign_query(&identity1, REQUEST_TYPE_READ, rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.payload, &[0u8; 936]);
+                assert_eq!(&resp.record.msg_id, &[0u8; 16]);
+            }
+
+            bus.set_current_timestamp(test_timestamp + 200);
+
+            // Identity one is also able to update the message, to 11's
+            {
+                let rec = RequestRecord {
+                    msg_id: resp1.record.msg_id.clone(),
+                    recipient: public2.clone(),
+                    payload: vec![11u8; 936],
+                };
+
+                let (challenge, req) =
+                    sign_query(&identity1, REQUEST_TYPE_UPDATE, rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                // We get the previous payload in the response
+                assert_eq!(&resp.record.payload, &[9u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 100);
+                assert_eq!(&resp.record.sender, &public1);
+                assert_eq!(&resp.record.recipient, &public2);
+                assert_eq!(&resp.record.msg_id, &resp1.record.msg_id);
+            }
+
+            // Identity one is able to see the updated message
+            for _ in 0..2 {
+                let rec = RequestRecord {
+                    msg_id: resp1.record.msg_id.clone(),
+                    recipient: public2.clone(),
+                    payload: vec![0u8; 936],
+                };
+
+                let (challenge, req) =
+                    sign_query(&identity1, REQUEST_TYPE_READ, rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.payload, &[11u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 200);
+                assert_eq!(&resp.record.sender, &public1);
+                assert_eq!(&resp.record.recipient, &public2);
+                assert_eq!(&resp.record.msg_id, &resp1.record.msg_id);
+            }
+
+            // Identity two is able to see the updated message by message id
+            {
+                let rec = RequestRecord {
+                    msg_id: resp1.record.msg_id.clone(),
+                    recipient: public2.clone(),
+                    payload: vec![0u8; 936],
+                };
+
+                let (challenge, req) =
+                    sign_query(&identity2, REQUEST_TYPE_READ, rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.payload, &[11u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 200);
+                assert_eq!(&resp.record.sender, &public1);
+                assert_eq!(&resp.record.recipient, &public2);
+                assert_eq!(&resp.record.msg_id, &resp1.record.msg_id);
+            }
+
+            // Identity two is able to see the updated message in inbox
+            {
+                let rec = RequestRecord {
+                    msg_id: vec![0u8; 16],
+                    recipient: vec![0u8; 32],
+                    payload: vec![0u8; 936],
+                };
+
+                let (challenge, req) =
+                    sign_query(&identity2, REQUEST_TYPE_READ, rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.payload, &[11u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 200);
+                assert_eq!(&resp.record.sender, &public1);
+                assert_eq!(&resp.record.recipient, &public2);
+                assert_eq!(&resp.record.msg_id, &resp1.record.msg_id);
+            }
+
+            // Identity three is not able to see the updated message
+            {
+                let rec = RequestRecord {
+                    msg_id: resp1.record.msg_id.clone(),
+                    recipient: public2.clone(),
+                    payload: vec![0u8; 936],
+                };
+
+                let (challenge, req) =
+                    sign_query(&identity3, REQUEST_TYPE_READ, rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.payload, &[0u8; 936]);
+                assert_eq!(&resp.record.msg_id, &[0u8; 16]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 200);
+                assert_eq!(&resp.record.sender, &[0u8; 32]);
+                assert_eq!(&resp.record.recipient, &[0u8; 32]);
+            }
+
+            // Identity three is not able to update the message themselves
+            {
+                let rec = RequestRecord {
+                    msg_id: resp1.record.msg_id.clone(),
+                    recipient: public2.clone(),
+                    payload: vec![13u8; 936],
+                };
+
+                let (challenge, req) =
+                    sign_query(&identity3, REQUEST_TYPE_UPDATE, rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.payload, &[0u8; 936]);
+                assert_eq!(&resp.record.msg_id, &[0u8; 16]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 200);
+                assert_eq!(&resp.record.sender, &[0u8; 32]);
+                assert_eq!(&resp.record.recipient, &[0u8; 32]);
+            }
+
+            // Identity one is still able to see the right thing
+            {
+                let rec = RequestRecord {
+                    msg_id: resp1.record.msg_id.clone(),
+                    recipient: public2.clone(),
+                    payload: vec![0u8; 936],
+                };
+
+                let (challenge, req) =
+                    sign_query(&identity1, REQUEST_TYPE_READ, rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.payload, &[11u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 200);
+                assert_eq!(&resp.record.sender, &public1);
+                assert_eq!(&resp.record.recipient, &public2);
+                assert_eq!(&resp.record.msg_id, &resp1.record.msg_id);
+            }
+
+            // Identity two is still able to see the right thing
+            {
+                let rec = RequestRecord {
+                    msg_id: resp1.record.msg_id.clone(),
+                    recipient: public2.clone(),
+                    payload: vec![0u8; 936],
+                };
+
+                let (challenge, req) =
+                    sign_query(&identity2, REQUEST_TYPE_READ, rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.payload, &[11u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 200);
+                assert_eq!(&resp.record.sender, &public1);
+                assert_eq!(&resp.record.recipient, &public2);
+                assert_eq!(&resp.record.msg_id, &resp1.record.msg_id);
+            }
+
+            bus.set_current_timestamp(test_timestamp + 300);
+
+            // Identity two is not able to update the message, passing all zeroes for msg id
+            {
+                let rec = RequestRecord {
+                    msg_id: vec![0u8; 16],
+                    recipient: vec![0u8; 32],
+                    payload: vec![13u8; 936],
+                };
+
+                let (challenge, req) =
+                    sign_query(&identity2, REQUEST_TYPE_UPDATE, rec.clone(), &mut rng);
+                assert!(bus.handle_query(&req, &challenge).is_err());
+            }
+
+            // Identity one is still able to see the right thing
+            {
+                let rec = RequestRecord {
+                    msg_id: resp1.record.msg_id.clone(),
+                    recipient: public2.clone(),
+                    payload: vec![0u8; 936],
+                };
+
+                let (challenge, req) =
+                    sign_query(&identity1, REQUEST_TYPE_READ, rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.payload, &[11u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 200);
+                assert_eq!(&resp.record.sender, &public1);
+                assert_eq!(&resp.record.recipient, &public2);
+                assert_eq!(&resp.record.msg_id, &resp1.record.msg_id);
+            }
+
+            // Identity two is still able to see the right thing
+            {
+                let rec = RequestRecord {
+                    msg_id: resp1.record.msg_id.clone(),
+                    recipient: public2.clone(),
+                    payload: vec![0u8; 936],
+                };
+
+                let (challenge, req) =
+                    sign_query(&identity2, REQUEST_TYPE_READ, rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.payload, &[11u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 200);
+                assert_eq!(&resp.record.sender, &public1);
+                assert_eq!(&resp.record.recipient, &public2);
+                assert_eq!(&resp.record.msg_id, &resp1.record.msg_id);
+            }
+
+            // Identity three is not able to see the message
+            {
+                let rec = RequestRecord {
+                    msg_id: resp1.record.msg_id.clone(),
+                    recipient: public2.clone(),
+                    payload: vec![0u8; 936],
+                };
+
+                let (challenge, req) =
+                    sign_query(&identity3, REQUEST_TYPE_READ, rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.payload, &[0u8; 936]);
+                assert_eq!(&resp.record.msg_id, &[0u8; 16]);
+                // Missed request returns current timestamp
+                assert_eq!(resp.record.timestamp, test_timestamp + 300);
+                assert_eq!(&resp.record.sender, &[0u8; 32]);
+                assert_eq!(&resp.record.recipient, &[0u8; 32]);
+            }
+
+            drop(empty_rec);
+        });
+    }
+
+    #[test_with_logger]
+    fn delete_permissions_and_visibility(logger: Logger) {
+        let mut bus = get_test_bus(logger);
+
+        run_with_several_seeds(|mut rng| {
+            let test_timestamp = bus.get_current_timestamp();
+
+            let identity1 = RistrettoPrivate::from_random(&mut rng);
+            let identity2 = RistrettoPrivate::from_random(&mut rng);
+            let identity3 = RistrettoPrivate::from_random(&mut rng);
+
+            let public1 = CompressedRistrettoPublic::from(&RistrettoPublic::from(&identity1))
+                .as_bytes()
+                .to_vec();
+            let public2 = CompressedRistrettoPublic::from(&RistrettoPublic::from(&identity2))
+                .as_bytes()
+                .to_vec();
+
+            // No one should have any messages yet
+            for id in &[&identity1, &identity2, &identity3] {
+                let empty = RequestRecord {
+                    msg_id: vec![0u8; 16],
+                    recipient: vec![0u8; 32],
+                    payload: vec![0u8; 936],
+                };
+
+                let (challenge, req) = sign_query(id, REQUEST_TYPE_READ, empty, &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.msg_id, &[0u8; 16]);
+                assert_eq!(&resp.record.payload, &[0u8; 936]);
+            }
+
+            // Send 7's from identity 1 to identity 2
+            let req = RequestRecord {
+                msg_id: vec![0u8; 16],
+                recipient: public2.clone(),
+                payload: vec![7u8; 936],
+            };
+
+            let (challenge, req) = sign_query(&identity1, REQUEST_TYPE_CREATE, req, &mut rng);
+
+            let resp1 = bus.handle_query(&req, &challenge).unwrap();
+
+            // Creating the message should have worked
+            assert_eq!(resp1.record.sender, public1);
+            assert_eq!(resp1.record.recipient, public2);
+            assert_eq!(resp1.record.payload, vec![7u8; 936]);
+            assert_eq!(resp1.record.timestamp, test_timestamp);
+
+            // Start with an all zeroes read request
+            let empty_rec = RequestRecord {
+                msg_id: vec![0u8; 16],
+                recipient: vec![0u8; 32],
+                payload: vec![0u8; 936],
+            };
+
+            // Identity one should not have incoming messages
+            {
+                let (challenge, req) =
+                    sign_query(&identity1, REQUEST_TYPE_READ, empty_rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.msg_id, &[0u8; 16]);
+                assert_eq!(&resp.record.payload, &[0u8; 936]);
+            }
+
+            // Identity two should have the 7's message
+            {
+                let (challenge, req) =
+                    sign_query(&identity2, REQUEST_TYPE_READ, empty_rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.payload, &[7u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp);
+                assert_eq!(&resp.record.sender, &public1);
+                assert_eq!(&resp.record.recipient, &public2);
+                assert_eq!(&resp.record.msg_id, &resp1.record.msg_id);
+            }
+
+            // Identity three should not have incoming messages
+            {
+                let (challenge, req) =
+                    sign_query(&identity3, REQUEST_TYPE_READ, empty_rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.msg_id, &[0u8; 16]);
+                assert_eq!(&resp.record.payload, &[0u8; 936]);
+            }
+
+            // Update timestamp in the message bus
+            bus.set_current_timestamp(test_timestamp + 100);
+
+            let msg1_rec = RequestRecord {
+                msg_id: resp1.record.msg_id.clone(),
+                recipient: public2.clone(),
+                payload: vec![0u8; 936],
+            };
+
+            // Identity two should be able to delete the message by msg_id
+            {
+                let (challenge, req) =
+                    sign_query(&identity2, REQUEST_TYPE_DELETE, msg1_rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.payload, &[7u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp);
+                assert_eq!(&resp.record.sender, &public1);
+                assert_eq!(&resp.record.recipient, &public2);
+                assert_eq!(&resp.record.msg_id, &resp1.record.msg_id);
+            }
+
+            // No one should now be able to see the message
+            for id in &[&identity1, &identity2, &identity3] {
+                let (challenge, req) =
+                    sign_query(id, REQUEST_TYPE_READ, msg1_rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.msg_id, &[0u8; 16]);
+                assert_eq!(&resp.record.payload, &[0u8; 936]);
+            }
+
+            // No one should now be able to see anything in their inboxes
+            for id in &[&identity1, &identity2, &identity3] {
+                let (challenge, req) =
+                    sign_query(id, REQUEST_TYPE_READ, empty_rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.msg_id, &[0u8; 16]);
+                assert_eq!(&resp.record.payload, &[0u8; 936]);
+            }
+
+            // Send 9's from identity 2 to identity 1
+            let req = RequestRecord {
+                msg_id: vec![0u8; 16],
+                recipient: public1.clone(),
+                payload: vec![9u8; 936],
+            };
+
+            let (challenge, req) = sign_query(&identity2, REQUEST_TYPE_CREATE, req, &mut rng);
+
+            let resp2 = bus.handle_query(&req, &challenge).unwrap();
+
+            // Creating the message should have worked
+            assert_eq!(resp2.record.payload, vec![9u8; 936]);
+            assert_eq!(resp2.record.sender, public2);
+            assert_eq!(resp2.record.recipient, public1);
+            assert_eq!(resp2.record.timestamp, test_timestamp + 100);
+
+            // Identity one should have the 9's message
+            {
+                let (challenge, req) =
+                    sign_query(&identity1, REQUEST_TYPE_READ, empty_rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.payload, &[9u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 100);
+                assert_eq!(&resp.record.sender, &public2);
+                assert_eq!(&resp.record.recipient, &public1);
+                assert_eq!(&resp.record.msg_id, &resp2.record.msg_id);
+            }
+
+            // Identity two should not have incoming messages
+            {
+                let (challenge, req) =
+                    sign_query(&identity2, REQUEST_TYPE_READ, empty_rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.msg_id, &[0u8; 16]);
+                assert_eq!(&resp.record.payload, &[0u8; 936]);
+            }
+
+            // Identity three should not have incoming messages
+            {
+                let (challenge, req) =
+                    sign_query(&identity3, REQUEST_TYPE_READ, empty_rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.msg_id, &[0u8; 16]);
+                assert_eq!(&resp.record.payload, &[0u8; 936]);
+            }
+
+            let msg2_rec = RequestRecord {
+                msg_id: resp2.record.msg_id.clone(),
+                recipient: public1.clone(),
+                payload: vec![255u8; 936],
+            };
+
+            // Identity two (sender) should be able to delete the message by msg_id
+            {
+                let (challenge, req) =
+                    sign_query(&identity2, REQUEST_TYPE_DELETE, msg2_rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.payload, &[9u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 100);
+                assert_eq!(&resp.record.sender, &public2);
+                assert_eq!(&resp.record.recipient, &public1);
+                assert_eq!(&resp.record.msg_id, &resp2.record.msg_id);
+            }
+
+            // No one should now be able to see the message
+            for id in &[&identity1, &identity2, &identity3] {
+                let (challenge, req) =
+                    sign_query(id, REQUEST_TYPE_READ, msg2_rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.msg_id, &[0u8; 16]);
+                assert_eq!(&resp.record.payload, &[0u8; 936]);
+            }
+
+            // No one should now be able to see anything in their inboxes
+            for id in &[&identity1, &identity2, &identity3] {
+                let (challenge, req) =
+                    sign_query(id, REQUEST_TYPE_READ, empty_rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.msg_id, &[0u8; 16]);
+                assert_eq!(&resp.record.payload, &[0u8; 936]);
+            }
+
+            bus.set_current_timestamp(test_timestamp + 200);
+
+            // Send 11's from identity 1 to identity 2
+            let req = RequestRecord {
+                msg_id: vec![0u8; 16],
+                recipient: public2.clone(),
+                payload: vec![11u8; 936],
+            };
+
+            let (challenge, req) = sign_query(&identity1, REQUEST_TYPE_CREATE, req, &mut rng);
+
+            let resp3 = bus.handle_query(&req, &challenge).unwrap();
+
+            // Creating the message should have worked
+            assert_eq!(resp3.record.payload, vec![11u8; 936]);
+            assert_eq!(resp3.record.sender, public1);
+            assert_eq!(resp3.record.recipient, public2);
+            assert_eq!(resp3.record.timestamp, test_timestamp + 200);
+
+            // Identity one should not have incoming messages
+            {
+                let (challenge, req) =
+                    sign_query(&identity1, REQUEST_TYPE_READ, empty_rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.msg_id, &[0u8; 16]);
+                assert_eq!(&resp.record.payload, &[0u8; 936]);
+            }
+
+            // Identity two should have the 11's message
+            {
+                let (challenge, req) =
+                    sign_query(&identity2, REQUEST_TYPE_READ, empty_rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.payload, &[11u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 200);
+                assert_eq!(&resp.record.sender, &public1);
+                assert_eq!(&resp.record.recipient, &public2);
+                assert_eq!(&resp.record.msg_id, &resp3.record.msg_id);
+            }
+
+            // Identity three should not have incoming messages
+            {
+                let (challenge, req) =
+                    sign_query(&identity3, REQUEST_TYPE_READ, empty_rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.msg_id, &[0u8; 16]);
+                assert_eq!(&resp.record.payload, &[0u8; 936]);
+            }
+
+            // Identity two should be able to blind-delete the 11's message
+            {
+                let (challenge, req) =
+                    sign_query(&identity2, REQUEST_TYPE_DELETE, empty_rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.payload, &[11u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 200);
+                assert_eq!(&resp.record.sender, &public1);
+                assert_eq!(&resp.record.recipient, &public2);
+                assert_eq!(&resp.record.msg_id, &resp3.record.msg_id);
+            }
+
+            let msg3_rec = RequestRecord {
+                msg_id: resp3.record.msg_id.clone(),
+                recipient: public2.clone(),
+                payload: vec![255u8; 936],
+            };
+
+            // No one should now be able to see the message
+            for id in &[&identity1, &identity2, &identity3] {
+                let (challenge, req) =
+                    sign_query(id, REQUEST_TYPE_READ, msg3_rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.msg_id, &[0u8; 16]);
+                assert_eq!(&resp.record.payload, &[0u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 200);
+            }
+
+            // No one should now be able to see anything in their inboxes
+            for id in &[&identity1, &identity2, &identity3] {
+                let (challenge, req) =
+                    sign_query(id, REQUEST_TYPE_READ, empty_rec.clone(), &mut rng);
+                let resp = bus.handle_query(&req, &challenge).unwrap();
+
+                assert_eq!(&resp.record.msg_id, &[0u8; 16]);
+                assert_eq!(&resp.record.payload, &[0u8; 936]);
+                assert_eq!(resp.record.timestamp, test_timestamp + 200);
+            }
         });
     }
 }
