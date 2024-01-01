@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The MobileCoin Foundation
+// Copyright (c) 2018-2024 The MobileCoin Foundation
 
 // Test that mc_grapevine_types structs match the protos defined in .proto files,
 // by testing that they round-trip through the proto-generated rust types
